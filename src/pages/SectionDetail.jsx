@@ -5,11 +5,11 @@ import {
     ArrowLeft, Plus, X, Trash2, Loader2,
     AlertCircle, CheckCircle2, CalendarDays,
     CreditCard, FileText, ChevronDown, ChevronUp,
-    Search, Download, Phone, User, MapPin, Tag,
+    Search, Download, Phone, User, MapPin, Tag, Pencil,
 } from 'lucide-react';
 import {
     collection, query, where,
-    getDocs, addDoc, deleteDoc, doc, serverTimestamp,
+    getDocs, addDoc, deleteDoc, doc, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuthState } from '../hooks/useAuthState';
@@ -123,6 +123,12 @@ export default function SectionDetail() {
     const [search, setSearch] = useState('');
     const [monthFilter, setMonthFilter] = useState('all');
 
+    /* Edit state */
+    const [editTarget, setEditTarget] = useState(null);
+    const [editForm, setEditForm] = useState(EMPTY_FORM);
+    const [editErrors, setEditErrors] = useState({});
+    const [editSubmitting, setEditSubmitting] = useState(false);
+
     // Invalid section → back to dashboard
     useEffect(() => { if (!meta) navigate('/dashboard'); }, [meta, navigate]);
 
@@ -220,6 +226,74 @@ export default function SectionDetail() {
 
     /* Delete — opens custom modal */
     const handleDelete = (tx) => setDeleteTarget(tx);
+
+    /* ── Edit ── */
+    const handleEdit = (tx) => {
+        setEditTarget(tx);
+        setEditForm({
+            date: tx.date || new Date().toISOString().slice(0, 10),
+            amount: tx.amount ?? '',
+            description: tx.description || '',
+            paymentMethod: tx.paymentMethod || 'Cash',
+            /* sales fields */
+            customerName: tx.customerName || '',
+            phone: tx.phone || '',
+            warrantyStartDate: tx.warrantyStartDate || '',
+            address: tx.address || '',
+            addedBy: tx.addedBy || 'Hasibul',
+        });
+        setEditErrors({});
+    };
+
+    const validateEdit = () => {
+        const e = {};
+        if (!editForm.date) e.date = 'Date is required';
+        if (!editForm.amount || isNaN(+editForm.amount) || +editForm.amount <= 0)
+            e.amount = 'Enter a valid positive amount';
+        if (!editForm.description.trim()) e.description = 'Description is required';
+        if (section === 'sales' && !editForm.customerName.trim()) e.customerName = 'Customer name is required';
+        setEditErrors(e);
+        return !Object.keys(e).length;
+    };
+
+    const confirmEdit = async () => {
+        if (!editTarget || !validateEdit()) return;
+        setEditSubmitting(true);
+
+        const updates = {
+            date: editForm.date,
+            amount: parseFloat(editForm.amount),
+            description: editForm.description.trim(),
+            paymentMethod: editForm.paymentMethod,
+            ...(section === 'sales' && {
+                customerName: editForm.customerName.trim(),
+                phone: editForm.phone.trim(),
+                warrantyStartDate: editForm.warrantyStartDate || null,
+                address: editForm.address.trim(),
+                addedBy: editForm.addedBy,
+            }),
+            updatedAt: serverTimestamp(),
+        };
+
+        /* ① Optimistic UI */
+        setTransactions(prev =>
+            prev.map(t => t.id === editTarget.id ? { ...t, ...updates, updatedAt: new Date() } : t)
+        );
+        setEditTarget(null);
+        setEditSubmitting(false);
+        toast.success('Entry updated!');
+
+        /* ② Persist */
+        try {
+            await updateDoc(doc(db, 'bt_transactions', editTarget.id), updates);
+        } catch {
+            /* Roll back */
+            setTransactions(prev =>
+                prev.map(t => t.id === editTarget.id ? editTarget : t)
+            );
+            toast.error('Update failed — changes reverted.');
+        }
+    };
 
     const confirmDelete = async () => {
         if (!deleteTarget) return;
@@ -676,17 +750,25 @@ export default function SectionDetail() {
                                                             {fmt(tx.amount)}
                                                         </td>
                                                         <td className="px-4 py-3.5">
-                                                            <button
-                                                                onClick={() => handleDelete(tx)}
-                                                                disabled={deletingId === tx.id}
-                                                                aria-label="Delete entry"
-                                                                className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100
-                                         transition-all focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-40"
-                                                            >
-                                                                {deletingId === tx.id
-                                                                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                                                                    : <Trash2 className="w-4 h-4" />}
-                                                            </button>
+                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                                <button
+                                                                    onClick={() => handleEdit(tx)}
+                                                                    aria-label="Edit entry"
+                                                                    className="p-1.5 rounded-lg text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                                                >
+                                                                    <Pencil className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDelete(tx)}
+                                                                    disabled={deletingId === tx.id}
+                                                                    aria-label="Delete entry"
+                                                                    className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-40"
+                                                                >
+                                                                    {deletingId === tx.id
+                                                                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                                                                        : <Trash2 className="w-4 h-4" />}
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </motion.tr>
                                                 ))}
@@ -738,6 +820,13 @@ export default function SectionDetail() {
                                                     )}
                                                 </div>
                                                 <button
+                                                    onClick={() => handleEdit(tx)}
+                                                    aria-label="Edit entry"
+                                                    className="mt-1 p-2 rounded-lg text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all focus:outline-none flex-shrink-0"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
+                                                <button
                                                     onClick={() => handleDelete(tx)}
                                                     disabled={deletingId === tx.id}
                                                     aria-label="Delete entry"
@@ -761,6 +850,153 @@ export default function SectionDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Edit Modal ── */}
+            <AnimatePresence>
+                {editTarget && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4 pb-4 sm:pb-0"
+                        onClick={() => setEditTarget(null)}
+                    >
+                        <motion.div
+                            initial={{ y: 60, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 60, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Modal header */}
+                            <div className={`${meta.formHead} px-5 py-4 flex items-center justify-between rounded-t-2xl`}>
+                                <div className="flex items-center gap-2">
+                                    <Pencil className="w-4 h-4 text-white" />
+                                    <h3 className="text-white font-bold text-sm">Edit {meta.label} Entry</h3>
+                                </div>
+                                <button onClick={() => setEditTarget(null)} className="text-white/70 hover:text-white transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="p-5 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                                    {/* Date */}
+                                    <div>
+                                        <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                            <CalendarDays className="w-3.5 h-3.5" /> Date
+                                        </label>
+                                        <input type="date" value={editForm.date}
+                                            onChange={e => { setEditForm(p => ({ ...p, date: e.target.value })); setEditErrors(p => ({ ...p, date: '' })); }}
+                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 transition-all ${editErrors.date ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
+                                        {editErrors.date && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.date}</p>}
+                                    </div>
+
+                                    {/* Amount */}
+                                    <div>
+                                        <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                            <CreditCard className="w-3.5 h-3.5" /> Amount (₹)
+                                        </label>
+                                        <input type="number" min="0" step="0.01" value={editForm.amount}
+                                            onChange={e => { setEditForm(p => ({ ...p, amount: e.target.value })); setEditErrors(p => ({ ...p, amount: '' })); }}
+                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 transition-all ${editErrors.amount ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
+                                        {editErrors.amount && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.amount}</p>}
+                                    </div>
+
+                                    {/* Description */}
+                                    <div className="sm:col-span-2">
+                                        <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                            <FileText className="w-3.5 h-3.5" /> Description
+                                        </label>
+                                        <input type="text" value={editForm.description}
+                                            onChange={e => { setEditForm(p => ({ ...p, description: e.target.value })); setEditErrors(p => ({ ...p, description: '' })); }}
+                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 transition-all ${editErrors.description ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
+                                        {editErrors.description && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.description}</p>}
+                                    </div>
+
+                                    {/* Payment Method */}
+                                    <div className="sm:col-span-2">
+                                        <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                            <CreditCard className="w-3.5 h-3.5" /> Payment Method
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {PAYMENT_METHODS.map(pm => (
+                                                <button key={pm} type="button"
+                                                    onClick={() => setEditForm(p => ({ ...p, paymentMethod: pm }))}
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all focus:outline-none focus:ring-2 ${meta.ring}
+                                                    ${editForm.paymentMethod === pm ? `${meta.btn} text-white border-transparent shadow` : 'border-gray-200 text-gray-500 bg-white hover:border-gray-300'}`}>
+                                                    {pm}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Sales-only fields */}
+                                    {section === 'sales' && (<>
+                                        <div>
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                <User className="w-3.5 h-3.5" /> Customer Name <span className="text-red-400">*</span>
+                                            </label>
+                                            <input type="text" value={editForm.customerName}
+                                                onChange={e => { setEditForm(p => ({ ...p, customerName: e.target.value })); setEditErrors(p => ({ ...p, customerName: '' })); }}
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 transition-all ${editErrors.customerName ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
+                                            {editErrors.customerName && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.customerName}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                <Phone className="w-3.5 h-3.5" /> Phone
+                                            </label>
+                                            <input type="tel" value={editForm.phone}
+                                                onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`} />
+                                        </div>
+                                        <div>
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                <CalendarDays className="w-3.5 h-3.5" /> Warranty Start
+                                            </label>
+                                            <input type="date" value={editForm.warrantyStartDate || ''}
+                                                onChange={e => setEditForm(p => ({ ...p, warrantyStartDate: e.target.value }))}
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`} />
+                                        </div>
+                                        <div>
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                <User className="w-3.5 h-3.5" /> Added By
+                                            </label>
+                                            <select value={editForm.addedBy}
+                                                onChange={e => setEditForm(p => ({ ...p, addedBy: e.target.value }))}
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`}>
+                                                {SALES_ADDED_BY.map(n => <option key={n} value={n}>{n}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                <MapPin className="w-3.5 h-3.5" /> Address
+                                            </label>
+                                            <textarea rows={2} value={editForm.address}
+                                                onChange={e => setEditForm(p => ({ ...p, address: e.target.value }))}
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all resize-none`} />
+                                        </div>
+                                    </>)}
+                                </div>
+
+                                {/* Action buttons */}
+                                <div className="flex gap-3 pt-1">
+                                    <button type="button" onClick={() => setEditTarget(null)}
+                                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-all focus:outline-none">
+                                        Cancel
+                                    </button>
+                                    <button id="confirm-edit-btn" onClick={confirmEdit} disabled={editSubmitting}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold shadow transition-all focus:outline-none focus:ring-2 disabled:opacity-60 ${meta.btn}`}>
+                                        {editSubmitting
+                                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                                            : <><CheckCircle2 className="w-4 h-4" /> Save Changes</>}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* ── Custom Delete Modal ── */}
             <AnimatePresence>
@@ -801,3 +1037,4 @@ export default function SectionDetail() {
         </>
     );
 }
+
