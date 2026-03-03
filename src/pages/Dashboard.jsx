@@ -174,24 +174,41 @@ export default function Dashboard() {
                     ))}
                 </div>
 
-                {/* ── Net Position ── */}
-                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                    className={`rounded-2xl p-5 border ${netProfit >= 0 ? 'bg-emerald-950/50 border-emerald-700/30' : 'bg-rose-950/50 border-rose-700/30'}`}>
-                    <div className="flex items-center justify-between">
+                {/* ── Brand Hero ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                    className="relative rounded-2xl overflow-hidden border border-amber-500/20 bg-gradient-to-br from-slate-800/80 via-amber-950/30 to-slate-800/80 backdrop-blur-sm"
+                >
+                    {/* Background glow orbs */}
+                    <div className="absolute -top-10 -left-10 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                    <div className="relative z-10 px-6 py-5 flex items-center justify-between gap-4">
                         <div>
-                            <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-1">Net Position — {PERIODS.find(p => p.id === period)?.label}</p>
-                            {loading
-                                ? <div className="h-10 w-44 bg-slate-700 rounded-lg animate-pulse" />
-                                : <p className={`text-4xl sm:text-5xl font-black tracking-tight ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                    {netProfit < 0 ? '−' : ''}{fmt(Math.abs(netProfit))}
-                                </p>
-                            }
-                            <p className="text-slate-500 text-xs mt-1">Sales & Investment − Vendors & Expenses</p>
+                            {/* Arabic Bismillah motif */}
+                            <p className="text-amber-400/60 text-xs font-medium tracking-widest mb-1 select-none">
+                                بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
+                            </p>
+                            {/* Main brand name */}
+                            <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-none">
+                                <span className="bg-gradient-to-r from-amber-300 via-orange-400 to-amber-500 bg-clip-text text-transparent drop-shadow-sm">
+                                    Bismillah
+                                </span>
+                                <span className="text-white ml-2">Toys</span>
+                            </h1>
+                            <p className="text-slate-400 text-xs mt-1.5 font-medium tracking-wide">
+                                🧸 Business Tracker &nbsp;·&nbsp; Daily Sales, Expenses &amp; Vendors
+                            </p>
                         </div>
-                        <div className={`text-8xl font-black opacity-10 select-none ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {netProfit >= 0 ? '↑' : '↓'}
+                        {/* Decorative toy emoji cluster */}
+                        <div className="flex-shrink-0 text-right select-none">
+                            <div className="text-5xl leading-none opacity-80 drop-shadow-lg">🧸</div>
+                            <div className="text-2xl mt-1 opacity-50">🪀 🎮</div>
                         </div>
                     </div>
+
+                    {/* Shimmer bar at bottom */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
                 </motion.div>
 
                 {/* ── Section Cards ── */}
