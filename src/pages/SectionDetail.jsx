@@ -5,6 +5,7 @@ import {
     ArrowLeft, Plus, X, Trash2, Loader2,
     AlertCircle, CheckCircle2, CalendarDays,
     CreditCard, FileText, ChevronDown, ChevronUp,
+    Search, Download,
 } from 'lucide-react';
 import {
     collection, query, where,
@@ -102,7 +103,10 @@ export default function SectionDetail() {
     const [submitting, setSubmitting] = useState(false);
 
     const [deletingId, setDeletingId] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
     const [sortAsc, setSortAsc] = useState(false);
+    const [search, setSearch] = useState('');
+    const [monthFilter, setMonthFilter] = useState('all');
 
     // Invalid section → back to dashboard
     useEffect(() => { if (!meta) navigate('/dashboard'); }, [meta, navigate]);
@@ -169,13 +173,16 @@ export default function SectionDetail() {
         }
     };
 
-    /* Delete */
-    const handleDelete = async (txId) => {
-        if (!window.confirm('Delete this entry? This cannot be undone.')) return;
-        setDeletingId(txId);
+    /* Delete — opens custom modal */
+    const handleDelete = (tx) => setDeleteTarget(tx);
+
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        setDeletingId(deleteTarget.id);
+        setDeleteTarget(null);
         try {
-            await deleteDoc(doc(db, 'bt_transactions', txId));
-            setTransactions((prev) => prev.filter((t) => t.id !== txId));
+            await deleteDoc(doc(db, 'bt_transactions', deleteTarget.id));
+            setTransactions((prev) => prev.filter((t) => t.id !== deleteTarget.id));
             toast.success('Entry deleted.');
         } catch {
             toast.error('Failed to delete entry.');
@@ -184,12 +191,41 @@ export default function SectionDetail() {
         }
     };
 
-    const sorted = [...transactions].sort((a, b) => {
-        const diff = new Date(a.date) - new Date(b.date);
-        return sortAsc ? diff : -diff;
-    });
+    /* CSV Export */
+    const exportCSV = () => {
+        if (!transactions.length) { toast.error('No data to export'); return; }
+        const rows = [['Date', 'Description', 'Payment Method', 'Amount (INR)']];
+        [...transactions]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .forEach(t => rows.push([t.date, `"${t.description}"`, t.paymentMethod || 'Cash', t.amount]));
+        const csv = rows.map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `${section}-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click(); URL.revokeObjectURL(url);
+        toast.success('CSV exported!');
+    };
+
+    /* Available months in this section */
+    const availableMonths = [...new Set(transactions.map(t => (t.date || '').slice(0, 7)))]
+        .filter(Boolean).sort().reverse();
+
+    /* Filtered + sorted list */
+    const sorted = [...transactions]
+        .filter(t => {
+            const matchMonth = monthFilter === 'all' || (t.date || '').startsWith(monthFilter);
+            const matchSearch = !search.trim() ||
+                t.description?.toLowerCase().includes(search.trim().toLowerCase());
+            return matchMonth && matchSearch;
+        })
+        .sort((a, b) => {
+            const diff = new Date(a.date) - new Date(b.date);
+            return sortAsc ? diff : -diff;
+        });
 
     const total = transactions.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const filteredTotal = sorted.reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
     if (!meta) return null;
 
@@ -201,6 +237,7 @@ export default function SectionDetail() {
 
     /* ── Render ── */
     return (
+        <>
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#0d1424] to-slate-900">
 
             {/* ── Coloured Header ── */}
@@ -377,16 +414,48 @@ export default function SectionDetail() {
                 <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
 
                     {/* Table toolbar */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                        <h2 className="text-base font-bold text-gray-800">Transaction History</h2>
-                        <button
-                            onClick={() => setSortAsc(v => !v)}
-                            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
-                            aria-label={sortAsc ? 'Sort newest first' : 'Sort oldest first'}
-                        >
-                            {sortAsc ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            {sortAsc ? 'Oldest first' : 'Newest first'}
-                        </button>
+                    <div className="px-5 py-4 border-b border-gray-100 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <h2 className="text-base font-bold text-gray-800 flex-shrink-0">Transaction History</h2>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setSortAsc(v => !v)}
+                                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
+                                    aria-label={sortAsc ? 'Sort newest first' : 'Sort oldest first'}
+                                >
+                                    {sortAsc ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    <span className="hidden sm:inline">{sortAsc ? 'Oldest' : 'Newest'}</span>
+                                </button>
+                                <button onClick={exportCSV} id="export-csv-btn"
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all focus:outline-none focus:ring-2 ${meta.btn}`}>
+                                    <Download className="w-3.5 h-3.5" /> Export
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                <input id="search-tx" type="text" value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    placeholder="Search transactions…"
+                                    className="w-full pl-8 pr-8 py-2 text-sm rounded-xl border border-gray-200 bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all" />
+                                {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"><X className="w-3.5 h-3.5" /></button>}
+                            </div>
+                            <select id="month-filter" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}
+                                className="py-2 px-3 text-sm rounded-xl border border-gray-200 bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all w-full sm:w-44">
+                                <option value="all">All months</option>
+                                {availableMonths.map(m => {
+                                    const [yr, mo] = m.split('-');
+                                    const label = new Date(+yr, +mo - 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+                                    return <option key={m} value={m}>{label}</option>;
+                                })}
+                            </select>
+                        </div>
+                        {(search || monthFilter !== 'all') && (
+                            <p className="text-xs text-gray-400">
+                                {sorted.length} result{sorted.length !== 1 ? 's' : ''} &middot; Total: <span className="font-bold text-gray-700">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(filteredTotal)}</span>
+                            </p>
+                        )}
                     </div>
 
                     {/* Error banner */}
@@ -458,7 +527,7 @@ export default function SectionDetail() {
                                                     </td>
                                                     <td className="px-4 py-3.5">
                                                         <button
-                                                            onClick={() => handleDelete(tx.id)}
+                                                            onClick={() => handleDelete(tx)}
                                                             disabled={deletingId === tx.id}
                                                             aria-label="Delete entry"
                                                             className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100
@@ -505,7 +574,7 @@ export default function SectionDetail() {
                                                 <p className="text-base font-extrabold text-gray-900 mt-0.5">{fmt(tx.amount)}</p>
                                             </div>
                                             <button
-                                                onClick={() => handleDelete(tx.id)}
+                                                onClick={() => handleDelete(tx)}
                                                 disabled={deletingId === tx.id}
                                                 aria-label="Delete entry"
                                                 className="mt-1 p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all
@@ -528,5 +597,43 @@ export default function SectionDetail() {
                 </div>
             </div>
         </div>
+
+        {/* ── Custom Delete Modal ── */}
+        <AnimatePresence>
+            {deleteTarget && (
+                <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+                    onClick={() => setDeleteTarget(null)}
+                >
+                    <motion.div
+                        initial={{ scale: 0.92, opacity: 0, y: 12 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.92, opacity: 0, y: 12 }}
+                        className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-red-100 mx-auto mb-4">
+                            <Trash2 className="w-7 h-7 text-red-500" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 text-center">Delete Entry?</h3>
+                        <p className="text-gray-500 text-sm text-center mt-1 mb-5">
+                            <span className="font-semibold text-gray-700">{deleteTarget.description}</span> will be permanently removed.
+                        </p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setDeleteTarget(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-all focus:outline-none">
+                                Cancel
+                            </button>
+                            <button id="confirm-delete-btn" onClick={confirmDelete}
+                                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-red-400">
+                                Yes, Delete
+                            </button>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+        </>
     );
 }
