@@ -5,6 +5,7 @@ import { useAuthState } from './hooks/useAuthState';
 
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SectionDetail = lazy(() => import('./pages/SectionDetail'));
 
@@ -36,6 +37,7 @@ function App() {
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                     <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+                    <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
                     <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
                     <Route path="/section/:id" element={<PrivateRoute><SectionDetail /></PrivateRoute>} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />

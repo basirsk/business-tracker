@@ -119,6 +119,16 @@ export default function Login() {
                                 </button>
                             </div>
                             {errors.password && <p className="mt-1 text-xs text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.password}</p>}
+                            {/* Forgot password link */}
+                            <div className="mt-2 text-right">
+                                <Link
+                                    to="/forgot-password"
+                                    id="forgot-password-link"
+                                    className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors focus:outline-none focus:underline"
+                                >
+                                    Forgot password?
+                                </Link>
+                            </div>
                         </div>
 
                         {/* Submit */}
@@ -156,12 +166,20 @@ export default function Login() {
                         Continue with Google
                     </button>
 
-                    <p className="text-center text-slate-500 text-sm mt-6">
-                        No account?{' '}
-                        <Link to="/signup" className="text-indigo-400 hover:text-indigo-300 font-medium">
-                            Create one free
+                    <div className="mt-6 flex flex-col items-center gap-2 text-sm">
+                        <p className="text-slate-500">
+                            No account?{' '}
+                            <Link to="/signup" className="text-indigo-400 hover:text-indigo-300 font-medium">
+                                Create one free
+                            </Link>
+                        </p>
+                        <Link
+                            to="/forgot-password"
+                            className="text-slate-500 hover:text-slate-300 transition-colors text-xs"
+                        >
+                            Forgot your password?
                         </Link>
-                    </p>
+                    </div>
                 </div>
             </motion.div>
         </div>
