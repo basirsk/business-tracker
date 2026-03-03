@@ -888,7 +888,7 @@ export default function SectionDetail() {
                                         </label>
                                         <input type="date" value={editForm.date}
                                             onChange={e => { setEditForm(p => ({ ...p, date: e.target.value })); setEditErrors(p => ({ ...p, date: '' })); }}
-                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 transition-all ${editErrors.date ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
+                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${editErrors.date ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
                                         {editErrors.date && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.date}</p>}
                                     </div>
 
@@ -899,7 +899,7 @@ export default function SectionDetail() {
                                         </label>
                                         <input type="number" min="0" step="0.01" value={editForm.amount}
                                             onChange={e => { setEditForm(p => ({ ...p, amount: e.target.value })); setEditErrors(p => ({ ...p, amount: '' })); }}
-                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 transition-all ${editErrors.amount ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
+                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${editErrors.amount ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
                                         {editErrors.amount && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.amount}</p>}
                                     </div>
 
@@ -910,7 +910,7 @@ export default function SectionDetail() {
                                         </label>
                                         <input type="text" value={editForm.description}
                                             onChange={e => { setEditForm(p => ({ ...p, description: e.target.value })); setEditErrors(p => ({ ...p, description: '' })); }}
-                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 transition-all ${editErrors.description ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
+                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${editErrors.description ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
                                         {editErrors.description && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.description}</p>}
                                     </div>
 
@@ -939,7 +939,7 @@ export default function SectionDetail() {
                                             </label>
                                             <input type="text" value={editForm.customerName}
                                                 onChange={e => { setEditForm(p => ({ ...p, customerName: e.target.value })); setEditErrors(p => ({ ...p, customerName: '' })); }}
-                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 transition-all ${editErrors.customerName ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${editErrors.customerName ? 'border-red-400 focus:ring-red-300' : `border-gray-200 ${meta.ring}`}`} />
                                             {editErrors.customerName && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.customerName}</p>}
                                         </div>
                                         <div>
@@ -948,7 +948,7 @@ export default function SectionDetail() {
                                             </label>
                                             <input type="tel" value={editForm.phone}
                                                 onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
-                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`} />
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 placeholder-gray-400 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`} />
                                         </div>
                                         <div>
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -956,7 +956,7 @@ export default function SectionDetail() {
                                             </label>
                                             <input type="date" value={editForm.warrantyStartDate || ''}
                                                 onChange={e => setEditForm(p => ({ ...p, warrantyStartDate: e.target.value }))}
-                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`} />
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`} />
                                         </div>
                                         <div>
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -964,7 +964,7 @@ export default function SectionDetail() {
                                             </label>
                                             <select value={editForm.addedBy}
                                                 onChange={e => setEditForm(p => ({ ...p, addedBy: e.target.value }))}
-                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`}>
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`}>
                                                 {SALES_ADDED_BY.map(n => <option key={n} value={n}>{n}</option>)}
                                             </select>
                                         </div>
@@ -974,7 +974,7 @@ export default function SectionDetail() {
                                             </label>
                                             <textarea rows={2} value={editForm.address}
                                                 onChange={e => setEditForm(p => ({ ...p, address: e.target.value }))}
-                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all resize-none`} />
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 placeholder-gray-400 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all resize-none`} />
                                         </div>
                                     </>)}
                                 </div>
