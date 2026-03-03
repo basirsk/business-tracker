@@ -1,25 +1,417 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Bismillah Toys Business Tracker — Mobile-First Global CSS
+   Phase 2: Mobile-first architecture (320px base)
+   Phase 3: Performance (contain, will-change, overscroll)
+   Phase 4: 8px spacing system, 12px border-radius base
+   Phase 6: WCAG AA focus states, reduced-motion
+───────────────────────────────────────────────────────────────────────── */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-*, *::before, *::after { box-sizing: border-box; }
+/* ── 1. Design Tokens ────────────────────────────────────────────────── */
+:root {
+  /* 8px spacing system */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* Fluid typography (clamp: min, preferred, max) */
+  --text-xs: clamp(0.70rem, 1.8vw, 0.75rem);
+  --text-sm: clamp(0.82rem, 2vw, 0.875rem);
+  --text-base: clamp(0.9rem, 2.2vw, 1rem);
+  --text-lg: clamp(1rem, 2.5vw, 1.125rem);
+  --text-xl: clamp(1.1rem, 3vw, 1.25rem);
+  --text-2xl: clamp(1.2rem, 4vw, 1.5rem);
+  --text-3xl: clamp(1.4rem, 5vw, 1.875rem);
+  --text-4xl: clamp(1.8rem, 6vw, 2.25rem);
+
+  /* Shadow depth system */
+  --shadow-1: 0 1px 3px 0 rgb(0 0 0/.10), 0 1px 2px -1px rgb(0 0 0/.10);
+  --shadow-2: 0 4px 6px -1px rgb(0 0 0/.10), 0 2px 4px -2px rgb(0 0 0/.10);
+  --shadow-3: 0 10px 15px -3px rgb(0 0 0/.15), 0 4px 6px -4px rgb(0 0 0/.15);
+  --shadow-4: 0 20px 25px -5px rgb(0 0 0/.20), 0 8px 10px -6px rgb(0 0 0/.20);
+
+  /* Tap target */
+  --tap-min: 44px;
+
+  /* Safe areas (notched devices) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* ── 2. Reset + Base ─────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Smooth scroll for in-page anchors */
+  scroll-behavior: smooth;
+  /* Prevent text size inflation on orientation change (mobile) */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: var(--text-base);
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #0f172a;
   color: #f1f5f9;
   margin: 0;
+  /* Prevent overscroll bounce on iOS that can cause layout shifts */
+  overscroll-behavior: none;
+  /* Improve tap responsiveness */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  /* Contain paint for heavy pages */
+  contain: content;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
+/* ── 3. Safe-area aware padding ──────────────────────────────────────── */
+#root {
+  min-height: 100dvh;
+  /* dynamic viewport height — fixes mobile browser chrome jumping */
+  padding-bottom: var(--safe-bottom);
+}
 
-/* Number input — hide spinners */
+/* ── 4. Typography scale ─────────────────────────────────────────────── */
+.text-fluid-xs {
+  font-size: var(--text-xs);
+}
+
+.text-fluid-sm {
+  font-size: var(--text-sm);
+}
+
+.text-fluid-base {
+  font-size: var(--text-base);
+}
+
+.text-fluid-lg {
+  font-size: var(--text-lg);
+}
+
+.text-fluid-xl {
+  font-size: var(--text-xl);
+}
+
+.text-fluid-2xl {
+  font-size: var(--text-2xl);
+}
+
+.text-fluid-3xl {
+  font-size: var(--text-3xl);
+}
+
+.text-fluid-4xl {
+  font-size: var(--text-4xl);
+}
+
+/* ── 5. Tap targets — minimum 44×44px ───────────────────────────────── */
+button,
+a,
+[role="button"],
+[role="link"],
+input[type="submit"],
+input[type="button"],
+label[for],
+select {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Expand hit area without affecting layout */
+  position: relative;
+}
+
+/* Exempt purely decorative or icon-within-button elements */
+button svg,
+a svg {
+  pointer-events: none;
+}
+
+/* Small icon buttons get a pseudo hit area extension */
+.btn-icon {
+  position: relative;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.btn-icon::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+/* ── 6. Focus states (WCAG AA) ───────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Remove default outline on non-keyboard interactions */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── 7. Sticky header performance ────────────────────────────────────── */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  will-change: transform;
+  contain: layout style;
+  /* Pad for status bar on notched devices */
+  padding-top: var(--safe-top);
+}
+
+/* ── 8. Card system ─────────────────────────────────────────────────── */
+.card {
+  border-radius: 16px;
+  /* 12–16px brand standard */
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+
+.card-elevated {
+  box-shadow: var(--shadow-3);
+}
+
+.card-sunken {
+  box-shadow: inset 0 2px 4px 0 rgb(0 0 0/.06);
+}
+
+/* ── 9. Button system ───────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 600;
+  transition: all 150ms ease;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  border: none;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: var(--text-sm);
+}
+
+.btn-primary {
+  background: #6366f1;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #5457e5;
+}
+
+.btn-primary:active {
+  background: #4749cc;
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+}
+
+.btn-secondary:hover {
+  background: #273549;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #94a3b8;
+}
+
+.btn-ghost:hover {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-lg {
+  min-height: 52px;
+  padding: 14px 24px;
+  font-size: var(--text-base);
+  border-radius: 14px;
+}
+
+/* ── 10. Form inputs ────────────────────────────────────────────────── */
+.input {
+  width: 100%;
+  min-height: 48px;
+  /* generous tap target */
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #334155;
+  background: #1e293b;
+  color: #f1f5f9;
+  font-size: var(--text-base);
+  font-family: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  -webkit-appearance: none;
+}
+
+.input::placeholder {
+  color: #475569;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.2);
+}
+
+.input-error {
+  border-color: #f43f5e;
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 3px rgb(244 63 94 / 0.2);
+}
+
+/* ── 11. Loading skeleton pulse ─────────────────────────────────────── */
+@keyframes bt-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.skeleton {
+  background: #1e293b;
+  border-radius: 8px;
+  animation: bt-pulse 1.6s ease-in-out infinite;
+}
+
+/* ── 12. Custom scrollbar (desktop only) ────────────────────────────── */
+@media (hover: hover) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+/* ── 13. Number input — hide spinners ───────────────────────────────── */
 input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-input[type=number] { -moz-appearance: textfield; }
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Date input — fix appearance on iOS */
+input[type=date] {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* ── 14. Reduced motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── 15. Bottom safe-area padding for modals / sheets ───────────────── */
+.sheet-bottom {
+  padding-bottom: max(var(--safe-bottom), 16px);
+}
+
+/* ── 16. Mobile table → card fallback ──────────────────────────────── */
+/* Tables scroll horizontally on mobile; cap their viewport exposure */
+.table-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Subtle scroll hint */
+  background:
+    linear-gradient(to right, white 30%, transparent),
+    linear-gradient(to right, transparent, white 70%) right,
+    radial-gradient(farthest-side at 0% 50%, rgba(0, 0, 0, .12), transparent),
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, .12), transparent) right;
+  background-repeat: no-repeat;
+  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* ── 17. Utility — thumb zone helper ───────────────────────────────── */
+/* Use .thumb-zone to ensure CTAs live in the reachable thumb area */
+.thumb-zone {
+  margin-top: auto;
+}
+
+/* ── 18. PWA install prompt ─────────────────────────────────────────── */
+.install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1e293b;
+  border-top: 1px solid #334155;
+  padding: 12px 16px;
+  padding-bottom: max(12px, var(--safe-bottom));
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

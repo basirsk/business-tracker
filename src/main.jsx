@@ -11,3 +11,16 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </BrowserRouter>
     </React.StrictMode>
 );
+
+/* ── Service Worker Registration (PWA Phase 7) ─────────────────────── */
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => {
+                console.log('[SW] Registered:', reg.scope);
+                // Check for updates every 60s
+                setInterval(() => reg.update(), 60_000);
+            })
+            .catch(err => console.warn('[SW] Registration failed:', err));
+    });
+}

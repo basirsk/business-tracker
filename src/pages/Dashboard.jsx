@@ -123,51 +123,47 @@ export default function Dashboard() {
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#0d1424] to-slate-900">
 
             {/* ── Top Bar ── */}
-            <header className="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-xl">
-                            <BarChart3 className="w-5 h-5 text-white" />
+            <header className="sticky-header bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-2 rounded-xl flex-shrink-0" aria-hidden="true">
+                            <span className="text-base leading-none">🧸</span>
                         </div>
                         <div>
-                            <p className="text-white font-bold text-base leading-tight">Business Tracker</p>
-                            <p className="text-slate-500 text-xs leading-tight">{greet()}, {firstName} 👋</p>
+                            <p className="text-white font-bold text-sm leading-tight">Bismillah Toys</p>
+                            <p className="text-slate-500 text-xs leading-tight hidden sm:block">{greet()}, {firstName} 👋</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        {/* Analytics */}
-                        <button
-                            onClick={() => navigate('/analytics')}
-                            id="analytics-btn"
-                            className="hidden sm:flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded-lg text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-slate-600"
-                        >
-                            <BarChart2 className="w-4 h-4" /> Analytics
-                        </button>
-                        <button onClick={fetchAll} disabled={loading} aria-label="Refresh"
-                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-slate-600">
+                    <div className="flex items-center gap-1">
+                        <button onClick={fetchAll} disabled={loading} aria-label="Refresh data"
+                            className="btn-icon text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-slate-500">
                             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         </button>
-                        <button onClick={handleLogout} id="logout-btn"
-                            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-slate-600">
+                        <button onClick={handleLogout} id="logout-btn" aria-label="Logout"
+                            className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white px-3 h-9 rounded-xl text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-slate-500">
                             <LogOut className="w-4 h-4" />
-                            <span className="hidden sm:inline">Logout</span>
+                            <span className="hidden xs:inline">Logout</span>
                         </button>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+            {/* ─── Main content — padded for bottom nav on mobile ───── */}
+            <main className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 pb-24 sm:pb-8">
 
-                {/* ── Period Tabs ── */}
-                <div className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-1.5">
+                {/* ── Period Tabs — 44px tap targets ── */}
+                <div role="tablist" aria-label="Time period filter"
+                    className="flex items-center gap-1 bg-slate-800/70 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-1">
                     {PERIODS.map(p => (
                         <button
+                            role="tab"
                             key={p.id} id={`period-${p.id}`}
                             onClick={() => setPeriod(p.id)}
-                            className={`flex-1 text-sm font-semibold py-2 px-3 rounded-xl transition-all focus:outline-none
+                            aria-selected={period === p.id}
+                            className={`flex-1 text-xs sm:text-sm font-semibold py-2.5 px-2 rounded-xl transition-all focus-visible:ring-2 focus-visible:ring-indigo-400 min-h-[44px]
                 ${period === p.id
                                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                                    : 'text-slate-400 hover:text-slate-200'}`}
+                                    : 'text-slate-400 hover:text-slate-200 active:bg-slate-700'}`}
                         >
                             {p.label}
                         </button>
@@ -211,42 +207,36 @@ export default function Dashboard() {
                     <div className="h-0.5 bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
                 </motion.div>
 
-                {/* ── Section Cards ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* ── Section Cards — 2-col on mobile too (smaller screens) ── */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     {SECTIONS.map((sec, i) => (
                         <motion.button
                             key={sec.id} id={`card-${sec.id}`}
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                            whileHover={{ scale: 1.025, y: -4 }} whileTap={{ scale: 0.97 }}
+                            whileTap={{ scale: 0.96 }}
                             onClick={() => navigate(`/section/${sec.id}`)}
-                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${sec.gradient} shadow-2xl ${sec.glow} text-left cursor-pointer focus:outline-none focus-visible:ring-4 ${sec.ring}`}
-                            style={{ minHeight: 156 }} aria-label={`Open ${sec.label}`}
+                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${sec.gradient} text-left cursor-pointer focus-visible:ring-4 ${sec.ring} active:brightness-90 transition-all`}
+                            style={{ minHeight: 140 }} aria-label={`Open ${sec.label}`}
                         >
-                            <span className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white/10 blur-sm pointer-events-none" />
-                            <span className="absolute -bottom-10 -left-6 w-44 h-44 rounded-full bg-black/10 blur-lg pointer-events-none" />
-                            <div className="relative z-10 p-5 h-full flex flex-col justify-between gap-3">
+                            <span className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white/10 pointer-events-none" />
+                            <div className="relative z-10 p-4 h-full flex flex-col justify-between gap-2">
                                 <div className="flex items-start justify-between">
-                                    <div>
-                                        <p className="text-white font-bold text-lg leading-tight">{sec.label}</p>
-                                        <p className="text-white/60 text-xs mt-0.5">{sec.subtitle}</p>
+                                    <div className="min-w-0">
+                                        <p className="text-white font-bold text-sm sm:text-base leading-tight">{sec.label}</p>
+                                        <p className="text-white/60 text-xs mt-0.5 hidden sm:block">{sec.subtitle}</p>
                                     </div>
-                                    <span className="text-3xl leading-none drop-shadow-sm">{sec.emoji}</span>
+                                    <span className="text-2xl sm:text-3xl leading-none drop-shadow-sm flex-shrink-0">{sec.emoji}</span>
                                 </div>
-                                <div className="flex items-end justify-between">
-                                    <div>
-                                        {loading
-                                            ? <div className="h-8 w-28 bg-white/20 rounded-lg animate-pulse" />
-                                            : <>
-                                                <p className="text-3xl font-extrabold text-white tracking-tight">{fmt(totals[sec.id])}</p>
-                                                <p className="text-white/50 text-xs mt-0.5">
-                                                    {counts[sec.id]} {counts[sec.id] === 1 ? 'entry' : 'entries'}
-                                                </p>
-                                            </>
-                                        }
-                                    </div>
-                                    <span className="bg-white/20 backdrop-blur-sm p-2 rounded-xl text-white hover:bg-white/30 transition-colors">
-                                        <ArrowRight className="w-5 h-5" />
-                                    </span>
+                                <div>
+                                    {loading
+                                        ? <div className="h-7 w-20 bg-white/20 rounded-lg animate-pulse" />
+                                        : <>
+                                            <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">{fmt(totals[sec.id])}</p>
+                                            <p className="text-white/50 text-xs mt-0.5">
+                                                {counts[sec.id]} {counts[sec.id] === 1 ? 'entry' : 'entries'}
+                                            </p>
+                                        </>
+                                    }
                                 </div>
                             </div>
                         </motion.button>
@@ -254,13 +244,13 @@ export default function Dashboard() {
                 </div>
 
                 {/* ── Recent Activity ── */}
-                <div>
+                <section aria-label="Recent activity">
                     <div className="flex items-center gap-2 mb-3">
-                        <Activity className="w-4 h-4 text-slate-500" />
-                        <h2 className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Recent Activity</h2>
+                        <Activity className="w-4 h-4 text-slate-500" aria-hidden="true" />
+                        <h2 className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Recent Activity</h2>
                         <button onClick={() => navigate('/analytics')}
-                            className="ml-auto text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
-                            View Analytics <ArrowRight className="w-3 h-3" />
+                            className="ml-auto text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 min-h-[44px] px-2">
+                            Analytics <ArrowRight className="w-3 h-3" />
                         </button>
                     </div>
 
@@ -269,48 +259,48 @@ export default function Dashboard() {
                             <div className="p-4 space-y-3">
                                 {[...Array(4)].map((_, i) => (
                                     <div key={i} className="flex gap-3 animate-pulse">
-                                        <div className="h-8 w-8 rounded-full bg-slate-700 flex-shrink-0" />
-                                        <div className="flex-1 space-y-1.5">
+                                        <div className="h-10 w-10 rounded-full bg-slate-700 flex-shrink-0" />
+                                        <div className="flex-1 space-y-2 py-1">
                                             <div className="h-3 w-3/4 bg-slate-700 rounded" />
                                             <div className="h-3 w-1/2 bg-slate-700/60 rounded" />
                                         </div>
-                                        <div className="h-4 w-16 bg-slate-700 rounded" />
+                                        <div className="h-4 w-16 bg-slate-700 rounded self-center" />
                                     </div>
                                 ))}
                             </div>
                         ) : recent.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="flex flex-col items-center justify-center py-14 text-center px-4">
                                 <Clock className="w-8 h-8 text-slate-600 mb-3" />
                                 <p className="text-slate-500 font-medium text-sm">No transactions yet</p>
-                                <p className="text-slate-600 text-xs mt-1">Tap a section card above to add your first entry</p>
+                                <p className="text-slate-600 text-xs mt-1">Tap a section card to add your first entry</p>
                             </div>
                         ) : (
-                            <ul className="divide-y divide-slate-700/50">
+                            <ul role="list" className="divide-y divide-slate-700/50">
                                 <AnimatePresence>
                                     {recent.map((tx, i) => {
                                         const sec = SECTIONS.find(s => s.id === tx.section);
                                         return (
                                             <motion.li key={tx.id}
-                                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
-                                                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700/30 transition-colors cursor-pointer group"
+                                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
+                                                className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-700/30 active:bg-slate-700/50 transition-colors cursor-pointer group min-h-[56px]"
                                                 onClick={() => navigate(`/section/${tx.section}`)}
                                             >
-                                                <span className="text-xl flex-shrink-0 w-9 h-9 bg-slate-700/60 rounded-full flex items-center justify-center">
+                                                <span className="text-lg flex-shrink-0 w-10 h-10 bg-slate-700/60 rounded-full flex items-center justify-center" aria-hidden="true">
                                                     {sec?.emoji || '📌'}
                                                 </span>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-slate-200 text-sm font-medium truncate">{tx.description}</p>
-                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SECTION_BADGE[tx.section] || 'bg-slate-700 text-slate-300'}`}>
                                                             {sec?.label || tx.section}
                                                         </span>
                                                         <span className="text-slate-500 text-xs flex items-center gap-1">
-                                                            <CalendarDays className="w-3 h-3" />{fmtDate(tx.date)}
+                                                            <CalendarDays className="w-3 h-3" aria-hidden="true" />
+                                                            <time>{fmtDate(tx.date)}</time>
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <p className="text-slate-100 font-extrabold text-sm flex-shrink-0">{fmt(tx.amount)}</p>
-                                                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" />
                                             </motion.li>
                                         );
                                     })}
@@ -318,10 +308,33 @@ export default function Dashboard() {
                             </ul>
                         )}
                     </div>
-                </div>
+                </section>
 
-                <p className="text-center text-slate-700 text-xs pb-2">Tap a card to view history or add a new entry</p>
+                {/* Bottom spacer for safe-area */}
+                <div className="h-2" aria-hidden="true" />
             </main>
+
+            {/* ── Sticky Bottom Nav (mobile thumb-zone) ── */}
+            <nav aria-label="Main navigation"
+                className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 flex items-stretch"
+                style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' }}
+            >
+                <button onClick={() => navigate('/dashboard')} aria-label="Dashboard" aria-current="page"
+                    className="flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-indigo-400 active:bg-slate-800 transition-colors">
+                    <BarChart3 className="w-5 h-5" />
+                    <span className="text-[10px] font-semibold">Dashboard</span>
+                </button>
+                <button onClick={() => navigate('/analytics')} aria-label="Analytics"
+                    className="flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-slate-500 hover:text-slate-300 active:bg-slate-800 transition-colors">
+                    <BarChart2 className="w-5 h-5" />
+                    <span className="text-[10px] font-semibold">Analytics</span>
+                </button>
+                <button onClick={handleLogout} aria-label="Logout"
+                    className="flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-slate-500 hover:text-rose-400 active:bg-slate-800 transition-colors">
+                    <LogOut className="w-5 h-5" />
+                    <span className="text-[10px] font-semibold">Logout</span>
+                </button>
+            </nav>
         </div>
     );
 }
