@@ -7,7 +7,7 @@ import {
     CreditCard, FileText, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import {
-    collection, query, where, orderBy,
+    collection, query, where,
     getDocs, addDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -116,8 +116,7 @@ export default function SectionDetail() {
             const q = query(
                 collection(db, 'bt_transactions'),
                 where('section', '==', section),
-                where('uid', '==', user.uid),
-                orderBy('date', 'desc')
+                where('uid', '==', user.uid)
             );
             const snap = await getDocs(q);
             setTransactions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
