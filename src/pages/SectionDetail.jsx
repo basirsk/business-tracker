@@ -67,12 +67,13 @@ const EMPTY_FORM = {
     amount: '',
     description: '',
     paymentMethod: 'Cash',
+    addedBy: 'Hasibul',          /* shared by all sections */
     /* ── Sales-only fields ── */
     customerName: '',
     phone: '',
     warrantyEndDate: '',
+    warrantyType: '1 Year Free Service (Without Battery)',
     address: '',
-    addedBy: 'Hasibul',
 };
 
 /* Auto-generate a unique Order ID: ORD-YYYYMMDD-XXXX */
@@ -164,8 +165,8 @@ export default function SectionDetail() {
         if (!form.description.trim()) e.description = 'Description is required';
         if (section === 'sales') {
             if (!form.customerName.trim()) e.customerName = 'Customer name is required';
-            if (form.phone && !/^[0-9+\-\s]{7,15}$/.test(form.phone.trim()))
-                e.phone = 'Enter a valid phone number';
+            if (form.phone && !/^[0-9]{10}$/.test(form.phone.trim()))
+                e.phone = 'Enter a valid 10-digit mobile number';
         }
         setFormErrors(e);
         return !Object.keys(e).length;
@@ -207,6 +208,7 @@ export default function SectionDetail() {
             `💳 *Payment:* ${tx.paymentMethod || 'Cash'}`,
             `📅 *Sale Date:* ${saleDate}`,
             `🛡️ *Warranty End:* ${warrantyDisplay}`,
+            `🔧 *Warranty Type:* ${tx.warrantyType || '1 Year Free Service (Without Battery)'}`,
             ``,
             `For any queries, please contact us. We appreciate your business! 🙏`,
         ].join('\n');
@@ -236,6 +238,7 @@ export default function SectionDetail() {
             amount: parseFloat(form.amount),
             description: form.description.trim(),
             paymentMethod: form.paymentMethod,
+            addedBy: form.addedBy,          /* all sections */
             ...(section === 'sales' && {
                 orderId,
                 customerName: form.customerName.trim(),
@@ -244,10 +247,10 @@ export default function SectionDetail() {
                     if (!form.date) return null;
                     const d = new Date(form.date);
                     d.setFullYear(d.getFullYear() + 1);
-                    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+                    return d.toISOString().slice(0, 10);
                 })(),
+                warrantyType: form.warrantyType,
                 address: form.address.trim(),
-                addedBy: form.addedBy,
             }),
         };
 
@@ -311,12 +314,13 @@ export default function SectionDetail() {
             amount: tx.amount ?? '',
             description: tx.description || '',
             paymentMethod: tx.paymentMethod || 'Cash',
+            addedBy: tx.addedBy || 'Hasibul',   /* all sections */
             /* sales fields */
             customerName: tx.customerName || '',
             phone: tx.phone || '',
-            warrantyEndDate: tx.warrantyEndDate || tx.warrantyStartDate || '',  // back-compat legacy field name
+            warrantyEndDate: tx.warrantyEndDate || tx.warrantyStartDate || '',
+            warrantyType: tx.warrantyType || '1 Year Free Service (Without Battery)',
             address: tx.address || '',
-            addedBy: tx.addedBy || 'Hasibul',
         });
         setEditErrors({});
     };
@@ -327,7 +331,11 @@ export default function SectionDetail() {
         if (!editForm.amount || isNaN(+editForm.amount) || +editForm.amount <= 0)
             e.amount = 'Enter a valid positive amount';
         if (!editForm.description.trim()) e.description = 'Description is required';
-        if (section === 'sales' && !editForm.customerName.trim()) e.customerName = 'Customer name is required';
+        if (section === 'sales') {
+            if (!editForm.customerName.trim()) e.customerName = 'Customer name is required';
+            if (editForm.phone && !/^[0-9]{10}$/.test(editForm.phone.trim()))
+                e.phone = 'Enter a valid 10-digit mobile number';
+        }
         setEditErrors(e);
         return !Object.keys(e).length;
     };
@@ -341,19 +349,19 @@ export default function SectionDetail() {
             amount: parseFloat(editForm.amount),
             description: editForm.description.trim(),
             paymentMethod: editForm.paymentMethod,
+            addedBy: editForm.addedBy,           /* all sections */
             ...(section === 'sales' && {
                 customerName: editForm.customerName.trim(),
                 phone: editForm.phone.trim(),
                 warrantyEndDate: (() => {
-                    // Always recompute +1 year from the sale date
                     const base = editForm.date;
                     if (!base) return editForm.warrantyEndDate || null;
                     const d = new Date(base);
                     d.setFullYear(d.getFullYear() + 1);
-                    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+                    return d.toISOString().slice(0, 10);
                 })(),
+                warrantyType: editForm.warrantyType,
                 address: editForm.address.trim(),
-                addedBy: editForm.addedBy,
             }),
             updatedAt: serverTimestamp(),
         };
@@ -399,18 +407,19 @@ export default function SectionDetail() {
         if (!transactions.length) { toast.error('No data to export'); return; }
         const isSales = section === 'sales';
         const headers = isSales
-            ? ['Order ID', 'Date', 'Customer', 'Phone', 'Description', 'Warranty End', 'Address', 'Added By', 'Payment Method', 'Amount (INR)']
-            : ['Date', 'Description', 'Payment Method', 'Amount (INR)'];
+            ? ['Order ID', 'Date', 'Customer', 'Phone', 'Description', 'Warranty End', 'Warranty Type', 'Address', 'Added By', 'Payment Method', 'Amount (INR)']
+            : ['Date', 'Description', 'Payment Method', 'Added By', 'Amount (INR)'];
         const rows = [headers];
         [...transactions]
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .forEach(t => {
                 if (isSales) {
                     rows.push([t.orderId || '', t.date, `"${t.customerName || ''}"`, t.phone || '',
-                    `"${t.description}"`, t.warrantyEndDate || t.warrantyStartDate || '', `"${t.address || ''}"`,
+                    `"${t.description}"`, t.warrantyEndDate || t.warrantyStartDate || '',
+                    `"${t.warrantyType || ''}"`, `"${t.address || ''}"`,
                     t.addedBy || '', t.paymentMethod || 'Cash', t.amount]);
                 } else {
-                    rows.push([t.date, `"${t.description}"`, t.paymentMethod || 'Cash', t.amount]);
+                    rows.push([t.date, `"${t.description}"`, t.paymentMethod || 'Cash', t.addedBy || '', t.amount]);
                 }
             });
         const csv = rows.map(r => r.join(',')).join('\n');
@@ -657,16 +666,19 @@ export default function SectionDetail() {
                                                 </div>
                                             </div>
 
-                                            {/* Added By */}
+                                            {/* Warranty Type — sales only */}
                                             <div>
-                                                <label htmlFor="field-addedby" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                                    <User className="w-3.5 h-3.5" /> Added By
+                                                <label htmlFor="field-warr-type" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                    <Tag className="w-3.5 h-3.5" /> Warranty Type
                                                 </label>
-                                                <select id="field-addedby"
-                                                    value={form.addedBy}
-                                                    onChange={e => setForm(p => ({ ...p, addedBy: e.target.value }))}
-                                                    className={inputCls('addedBy')}>
-                                                    {SALES_ADDED_BY.map(n => <option key={n} value={n}>{n}</option>)}
+                                                <select id="field-warr-type"
+                                                    value={form.warrantyType}
+                                                    onChange={e => setForm(p => ({ ...p, warrantyType: e.target.value }))}
+                                                    className={inputCls('warrantyType')}>
+                                                    <option>1 Year Free Service (Without Battery)</option>
+                                                    <option>1 Year Free Service (With Battery)</option>
+                                                    <option>6 Months Free Service</option>
+                                                    <option>No Warranty</option>
                                                 </select>
                                             </div>
 
@@ -682,6 +694,19 @@ export default function SectionDetail() {
                                                     className={`${inputCls('address')} resize-none`} />
                                             </div>
                                         </>)}
+
+                                        {/* Added By — visible for ALL sections */}
+                                        <div>
+                                            <label htmlFor="field-addedby" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                <User className="w-3.5 h-3.5" /> Added By
+                                            </label>
+                                            <select id="field-addedby"
+                                                value={form.addedBy}
+                                                onChange={e => setForm(p => ({ ...p, addedBy: e.target.value }))}
+                                                className={inputCls('addedBy')}>
+                                                {SALES_ADDED_BY.map(n => <option key={n} value={n}>{n}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
 
                                     {/* Action buttons */}
@@ -1042,7 +1067,19 @@ export default function SectionDetail() {
                                         </div>
                                     </div>
 
-                                    {/* Sales-only fields */}
+                                    {/* Added By — ALL sections */}
+                                    <div>
+                                        <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                            <User className="w-3.5 h-3.5" /> Added By
+                                        </label>
+                                        <select value={editForm.addedBy}
+                                            onChange={e => setEditForm(p => ({ ...p, addedBy: e.target.value }))}
+                                            className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`}>
+                                            {SALES_ADDED_BY.map(n => <option key={n} value={n}>{n}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {/* ── Sales-only fields ── */}
                                     {section === 'sales' && (<>
                                         <div>
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -1056,9 +1093,11 @@ export default function SectionDetail() {
                                         <div>
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                                 <Phone className="w-3.5 h-3.5" /> Phone
+                                                <span className="ml-1 text-[10px] font-normal text-gray-400">(10 digits)</span>
                                             </label>
                                             <input type="tel" value={editForm.phone}
-                                                onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
+                                                onChange={e => setEditForm(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                                                maxLength={10} inputMode="numeric" placeholder="e.g. 9876543210"
                                                 className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 placeholder-gray-400 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`} />
                                         </div>
                                         <div>
@@ -1079,12 +1118,15 @@ export default function SectionDetail() {
                                         </div>
                                         <div>
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                                <User className="w-3.5 h-3.5" /> Added By
+                                                <Tag className="w-3.5 h-3.5" /> Warranty Type
                                             </label>
-                                            <select value={editForm.addedBy}
-                                                onChange={e => setEditForm(p => ({ ...p, addedBy: e.target.value }))}
+                                            <select value={editForm.warrantyType}
+                                                onChange={e => setEditForm(p => ({ ...p, warrantyType: e.target.value }))}
                                                 className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`}>
-                                                {SALES_ADDED_BY.map(n => <option key={n} value={n}>{n}</option>)}
+                                                <option>1 Year Free Service (Without Battery)</option>
+                                                <option>1 Year Free Service (With Battery)</option>
+                                                <option>6 Months Free Service</option>
+                                                <option>No Warranty</option>
                                             </select>
                                         </div>
                                         <div className="sm:col-span-2">
@@ -1112,12 +1154,13 @@ export default function SectionDetail() {
                                     </button>
                                 </div>
                             </div>
+
                         </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* ── Custom Delete Modal ── */}
+            {/* Custom Delete Modal */}
             <AnimatePresence>
                 {deleteTarget && (
                     <motion.div
@@ -1156,4 +1199,3 @@ export default function SectionDetail() {
         </>
     );
 }
-
