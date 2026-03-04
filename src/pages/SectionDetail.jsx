@@ -70,7 +70,7 @@ const EMPTY_FORM = {
     /* ── Sales-only fields ── */
     customerName: '',
     phone: '',
-    warrantyStartDate: '',
+    warrantyEndDate: '',
     address: '',
     addedBy: 'Hasibul',
 };
@@ -195,7 +195,12 @@ export default function SectionDetail() {
                 orderId,
                 customerName: form.customerName.trim(),
                 phone: form.phone.trim(),
-                warrantyStartDate: form.warrantyStartDate || null,
+                warrantyEndDate: (() => {
+                    if (!form.date) return null;
+                    const d = new Date(form.date);
+                    d.setFullYear(d.getFullYear() + 1);
+                    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+                })(),
                 address: form.address.trim(),
                 addedBy: form.addedBy,
             }),
@@ -238,7 +243,7 @@ export default function SectionDetail() {
             /* sales fields */
             customerName: tx.customerName || '',
             phone: tx.phone || '',
-            warrantyStartDate: tx.warrantyStartDate || '',
+            warrantyEndDate: tx.warrantyEndDate || tx.warrantyStartDate || '',  // back-compat legacy field name
             address: tx.address || '',
             addedBy: tx.addedBy || 'Hasibul',
         });
@@ -268,12 +273,20 @@ export default function SectionDetail() {
             ...(section === 'sales' && {
                 customerName: editForm.customerName.trim(),
                 phone: editForm.phone.trim(),
-                warrantyStartDate: editForm.warrantyStartDate || null,
+                warrantyEndDate: (() => {
+                    // Always recompute +1 year from the sale date
+                    const base = editForm.date;
+                    if (!base) return editForm.warrantyEndDate || null;
+                    const d = new Date(base);
+                    d.setFullYear(d.getFullYear() + 1);
+                    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+                })(),
                 address: editForm.address.trim(),
                 addedBy: editForm.addedBy,
             }),
             updatedAt: serverTimestamp(),
         };
+
 
         /* ① Optimistic UI */
         setTransactions(prev =>
@@ -315,7 +328,7 @@ export default function SectionDetail() {
         if (!transactions.length) { toast.error('No data to export'); return; }
         const isSales = section === 'sales';
         const headers = isSales
-            ? ['Order ID', 'Date', 'Customer', 'Phone', 'Description', 'Warranty Start', 'Address', 'Added By', 'Payment Method', 'Amount (INR)']
+            ? ['Order ID', 'Date', 'Customer', 'Phone', 'Description', 'Warranty End', 'Address', 'Added By', 'Payment Method', 'Amount (INR)']
             : ['Date', 'Description', 'Payment Method', 'Amount (INR)'];
         const rows = [headers];
         [...transactions]
@@ -323,7 +336,7 @@ export default function SectionDetail() {
             .forEach(t => {
                 if (isSales) {
                     rows.push([t.orderId || '', t.date, `"${t.customerName || ''}"`, t.phone || '',
-                    `"${t.description}"`, t.warrantyStartDate || '', `"${t.address || ''}"`,
+                    `"${t.description}"`, t.warrantyEndDate || t.warrantyStartDate || '', `"${t.address || ''}"`,
                     t.addedBy || '', t.paymentMethod || 'Cash', t.amount]);
                 } else {
                     rows.push([t.date, `"${t.description}"`, t.paymentMethod || 'Cash', t.amount]);
@@ -555,15 +568,22 @@ export default function SectionDetail() {
                                                 {formErrors.phone && <p role="alert" className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{formErrors.phone}</p>}
                                             </div>
 
-                                            {/* Warranty Start Date */}
+                                            {/* Warranty End Date — auto-computed, read-only */}
                                             <div>
                                                 <label htmlFor="field-warranty" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                                    <CalendarDays className="w-3.5 h-3.5" /> Warranty Start Date
+                                                    <CalendarDays className="w-3.5 h-3.5" /> Warranty End Date
+                                                    <span className="ml-1 text-[10px] font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Auto</span>
                                                 </label>
-                                                <input id="field-warranty" type="date"
-                                                    value={form.warrantyStartDate}
-                                                    onChange={e => setForm(p => ({ ...p, warrantyStartDate: e.target.value }))}
-                                                    className={inputCls('warrantyStartDate')} />
+                                                <div id="field-warranty"
+                                                    className={`${inputCls('warrantyEndDate')} flex items-center gap-2 opacity-75 select-none cursor-default`}
+                                                >
+                                                    <CalendarDays className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                                    <span className="text-sm text-gray-700 font-medium">
+                                                        {form.date
+                                                            ? (() => { const d = new Date(form.date); d.setFullYear(d.getFullYear() + 1); return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); })()
+                                                            : 'Set sale date first'}
+                                                    </span>
+                                                </div>
                                             </div>
 
                                             {/* Added By */}
@@ -952,11 +972,19 @@ export default function SectionDetail() {
                                         </div>
                                         <div>
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                                <CalendarDays className="w-3.5 h-3.5" /> Warranty Start
+                                                <CalendarDays className="w-3.5 h-3.5" /> Warranty End Date
+                                                <span className="ml-1 text-[10px] font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Auto</span>
                                             </label>
-                                            <input type="date" value={editForm.warrantyStartDate || ''}
-                                                onChange={e => setEditForm(p => ({ ...p, warrantyStartDate: e.target.value }))}
-                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`} />
+                                            <div className="w-full px-3 py-2.5 rounded-xl border text-sm bg-gray-50 text-gray-700 border-gray-200 flex items-center gap-2 opacity-75 select-none cursor-default">
+                                                <CalendarDays className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                                <span className="font-medium">
+                                                    {editForm.warrantyEndDate
+                                                        ? new Date(editForm.warrantyEndDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                                                        : editForm.date
+                                                            ? (() => { const d = new Date(editForm.date); d.setFullYear(d.getFullYear() + 1); return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); })()
+                                                            : '—'}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
