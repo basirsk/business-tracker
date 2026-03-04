@@ -5,7 +5,7 @@ import {
     ArrowLeft, Plus, X, Trash2, Loader2,
     AlertCircle, CheckCircle2, CalendarDays,
     CreditCard, FileText, ChevronDown, ChevronUp,
-    Search, Download, Phone, User, MapPin, Tag, Pencil,
+    Search, Download, Phone, User, MapPin, Tag, Pencil, MessageCircle,
 } from 'lucide-react';
 import {
     collection, query, where,
@@ -172,11 +172,56 @@ export default function SectionDetail() {
     };
 
     /* ─────────────────────────────────────────────────────────────────────
+     *  WHATSAPP — wa.me deep link, free, no API needed.
+     *  Opens WhatsApp with a pre-filled message. User just taps Send.
+     * ───────────────────────────────────────────────────────────────────── */
+    const sendWhatsApp = (tx) => {
+        if (!tx.phone) { toast.error('No phone number for this customer.'); return; }
+
+        // Format a clean Indian phone number (strip spaces/dashes, add +91 if needed)
+        let phone = tx.phone.replace(/[\s\-\(\)]/g, '');
+        if (phone.startsWith('0')) phone = '91' + phone.slice(1);
+        if (!phone.startsWith('+') && !phone.startsWith('91')) phone = '91' + phone;
+        phone = phone.replace(/^\+/, '');
+
+        // Format warranty end date for display
+        const warrantyDisplay = (() => {
+            const raw = tx.warrantyEndDate || tx.warrantyStartDate;
+            if (!raw) return '—';
+            try { return new Date(raw).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
+            catch { return raw; }
+        })();
+
+        const saleDate = (() => {
+            if (!tx.date) return '—';
+            try { return new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
+            catch { return tx.date; }
+        })();
+
+        const message = [
+            `🧸 *Bismillah Toys* — Thank you for your purchase! 🎉`,
+            ``,
+            `📋 *Order ID:* ${tx.orderId || '—'}`,
+            `📦 *Item:* ${tx.description}`,
+            `💰 *Amount:* ₹${Number(tx.amount).toLocaleString('en-IN')}`,
+            `💳 *Payment:* ${tx.paymentMethod || 'Cash'}`,
+            `📅 *Sale Date:* ${saleDate}`,
+            `🛡️ *Warranty End:* ${warrantyDisplay}`,
+            ``,
+            `For any queries, please contact us. We appreciate your business! 🙏`,
+        ].join('\n');
+
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
+    /* ─────────────────────────────────────────────────────────────────────
      *  OPTIMISTIC SAVE  — UI updates instantly, Firestore write is async.
      *  This is why the old save felt slow: we were awaiting Firestore before
      *  updating the UI. Now the list updates immediately.
      * ───────────────────────────────────────────────────────────────────── */
     const handleSubmit = async (ev) => {
+
         ev.preventDefault();
         if (!validate()) return;
         setSubmitting(true);
@@ -212,7 +257,33 @@ export default function SectionDetail() {
         setForm(EMPTY_FORM);
         setShowForm(false);
         setSubmitting(false);
-        toast.success('Entry saved!');
+
+        /* Show WhatsApp nudge for sales with a phone number */
+        if (section === 'sales' && payload.phone) {
+            toast(
+                (t) => (
+                    <div className="flex flex-col gap-2">
+                        <p className="text-sm font-semibold text-gray-800">✅ Sale saved!</p>
+                        <p className="text-xs text-gray-500">Send order details to customer?</p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => { sendWhatsApp(optimisticTx); toast.dismiss(t.id); }}
+                                className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                                <MessageCircle className="w-3.5 h-3.5" /> Send WhatsApp
+                            </button>
+                            <button onClick={() => toast.dismiss(t.id)}
+                                className="text-xs text-gray-400 hover:text-gray-600 px-2">
+                                Skip
+                            </button>
+                        </div>
+                    </div>
+                ),
+                { duration: 8000, style: { background: '#fff', color: '#111', padding: '14px' } }
+            );
+        } else {
+            toast.success('Entry saved!');
+        }
 
         /* ② Persist to Firestore in background */
         try {
@@ -771,6 +842,16 @@ export default function SectionDetail() {
                                                         </td>
                                                         <td className="px-4 py-3.5">
                                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                                {/* WhatsApp — sales only, needs phone */}
+                                                                {section === 'sales' && tx.phone && (
+                                                                    <button
+                                                                        onClick={() => sendWhatsApp(tx)}
+                                                                        aria-label="Send WhatsApp message"
+                                                                        className="p-1.5 rounded-lg text-gray-300 hover:text-green-600 hover:bg-green-50 transition-all focus:outline-none focus:ring-2 focus:ring-green-300"
+                                                                    >
+                                                                        <MessageCircle className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
                                                                 <button
                                                                     onClick={() => handleEdit(tx)}
                                                                     aria-label="Edit entry"
@@ -839,6 +920,16 @@ export default function SectionDetail() {
                                                         <p className="text-xs text-gray-400 mt-0.5">Added by {tx.addedBy}</p>
                                                     )}
                                                 </div>
+                                                {/* WhatsApp button — sales only, needs phone */}
+                                                {section === 'sales' && tx.phone && (
+                                                    <button
+                                                        onClick={() => sendWhatsApp(tx)}
+                                                        aria-label="Send WhatsApp"
+                                                        className="mt-1 p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all focus:outline-none flex-shrink-0"
+                                                    >
+                                                        <MessageCircle className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => handleEdit(tx)}
                                                     aria-label="Edit entry"
