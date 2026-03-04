@@ -22,9 +22,13 @@ function getAdminDb() {
     if (!getApps().length) {
         const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
         if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var missing');
-        const sa = JSON.parse(
-            Buffer.from(raw, 'base64').toString('utf8')
-        );
+        let sa;
+        // Try raw JSON first (starts with '{'), then base64
+        if (raw.trim().startsWith('{')) {
+            sa = JSON.parse(raw);
+        } else {
+            sa = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+        }
         initializeApp({ credential: cert(sa) });
     }
     return getFirestore();
