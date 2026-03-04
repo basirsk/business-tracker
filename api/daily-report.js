@@ -209,7 +209,7 @@ export default async function handler(req, res) {
         const txCount = Object.values(todayTxs).reduce((s, txs) => s + txs.length, 0);
 
         const { data, error } = await resend.emails.send({
-            from: 'Bismillah Toys <reports@bismillahtoys.com>',  // use your verified Resend domain
+            from: 'Bismillah Toys <onboarding@resend.dev>',
             to: ['culebasir@gmail.com'],
             subject: `📊 Daily Report — ${fmtDate(today)} | ${txCount} txn${txCount !== 1 ? 's' : ''} | Total ${inr(totalToday)}`,
             html: buildHtml(today, allTime, todayTxs),
