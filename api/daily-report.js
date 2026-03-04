@@ -29,6 +29,10 @@ function getAdminDb() {
         } else {
             sa = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
         }
+        // Fix: Vercel sometimes stores \n as literal \\n in env vars — convert back
+        if (sa.private_key && sa.private_key.includes('\\n')) {
+            sa.private_key = sa.private_key.replace(/\\n/g, '\n');
+        }
         initializeApp({ credential: cert(sa) });
     }
     return getFirestore();
