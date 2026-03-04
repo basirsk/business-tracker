@@ -1,41 +1,63 @@
 /**
  * Vercel Serverless Function — /api/daily-report
  * ─────────────────────────────────────────────────
- * Triggered by Vercel Cron daily at 11:30 PM IST (18:00 UTC).
- * Queries Firestore for:
- *   • All transactions added TODAY (IST) per section
- *   • All-time total per section
- * Sends a rich HTML email to culebasir@gmail.com via Resend.
+ * Uses Firestore REST API (no Admin SDK / no gRPC) to avoid
+ * Vercel hobby-plan network restrictions.
  *
- * Required env vars (set in Vercel dashboard):
- *   RESEND_API_KEY              — from resend.com
- *   FIREBASE_SERVICE_ACCOUNT    — Firebase service-account JSON, base64-encoded
- *   CRON_SECRET                 — any random string; add to vercel.json header check
+ * Required env vars:
+ *   RESEND_API_KEY           — from resend.com
+ *   FIREBASE_SERVICE_ACCOUNT — Firebase service-account JSON, base64-encoded
+ *   CRON_SECRET              — random secret string
  */
 
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
 
-/* ── Initialise Firebase Admin (once) ── */
-function getAdminDb() {
-    if (!getApps().length) {
-        const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-        if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var missing');
-        let sa;
-        // Try raw JSON first (starts with '{'), then base64
-        if (raw.trim().startsWith('{')) {
-            sa = JSON.parse(raw);
-        } else {
-            sa = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
-        }
-        // Fix: Vercel sometimes stores \n as literal \\n in env vars — convert back
-        if (sa.private_key && sa.private_key.includes('\\n')) {
-            sa.private_key = sa.private_key.replace(/\\n/g, '\n');
-        }
-        initializeApp({ credential: cert(sa) });
-    }
-    return getFirestore();
+/* ── Google OAuth2 token from service account ── */
+async function getAccessToken(sa) {
+    const now = Math.floor(Date.now() / 1000);
+    const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+    const payload = btoa(JSON.stringify({
+        iss: sa.client_email,
+        scope: 'https://www.googleapis.com/auth/datastore',
+        aud: 'https://oauth2.googleapis.com/token',
+        iat: now,
+        exp: now + 3600,
+    }));
+
+    // Sign with private key using WebCrypto
+    const pemKey = sa.private_key.replace(/\\n/g, '\n');
+    const keyDer = pemToDer(pemKey);
+    const cryptoKey = await crypto.subtle.importKey(
+        'pkcs8', keyDer,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        false, ['sign']
+    );
+
+    const sigInput = `${header}.${payload}`;
+    const sigBytes = await crypto.subtle.sign(
+        'RSASSA-PKCS1-v1_5', cryptoKey,
+        new TextEncoder().encode(sigInput)
+    );
+    const sig = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
+    const jwt = `${sigInput}.${sig.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')}`;
+
+    // Exchange JWT for access token
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+    });
+    const data = await res.json();
+    if (!data.access_token) throw new Error('Token error: ' + JSON.stringify(data));
+    return data.access_token;
+}
+
+function pemToDer(pem) {
+    const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
 }
 
 /* ── Section metadata ── */
@@ -46,12 +68,10 @@ const SECTIONS = [
     { key: 'stock', label: 'Stock', emoji: '📦', color: '#9333ea' },
 ];
 
-/* ── Helpers ── */
 const inr = (n) =>
     `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`;
 
 function todayIST() {
-    // Return YYYY-MM-DD in IST (UTC+5:30)
     const now = new Date();
     const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
     return ist.toISOString().slice(0, 10);
@@ -66,35 +86,64 @@ function fmtDate(d) {
     } catch { return d; }
 }
 
-/* ── Query Firestore ── */
-async function fetchData(db) {
+/* ── Firestore REST query ── */
+async function fetchData(projectId, token) {
     const today = todayIST();
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
 
-    // Get ALL transactions for all sections in one query
-    const snap = await db
-        .collection('bt_transactions')
-        .get();
+    const body = {
+        structuredQuery: {
+            from: [{ collectionId: 'bt_transactions' }],
+        },
+    };
 
-    const allTime = {};   // { section: total }
-    const todayTxs = {}; // { section: [tx, ...] }
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+    });
 
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Firestore query failed: ${err}`);
+    }
+
+    const rows = await res.json();
+
+    const allTime = {};
+    const todayTxs = {};
     for (const sec of SECTIONS) {
         allTime[sec.key] = 0;
         todayTxs[sec.key] = [];
     }
 
-    snap.forEach(doc => {
-        const tx = { id: doc.id, ...doc.data() };
+    for (const row of rows) {
+        if (!row.document) continue;
+        const fields = row.document.fields || {};
+        const tx = parseFirestoreDoc(fields);
         const sec = tx.section;
-        if (!allTime.hasOwnProperty(sec)) return; // skip unknown sections
-
+        if (!allTime.hasOwnProperty(sec)) continue;
         allTime[sec] += Number(tx.amount || 0);
-        if (tx.date === today) {
-            todayTxs[sec].push(tx);
-        }
-    });
+        if (tx.date === today) todayTxs[sec].push(tx);
+    }
 
     return { today, allTime, todayTxs };
+}
+
+function parseFirestoreDoc(fields) {
+    const out = {};
+    for (const [k, v] of Object.entries(fields)) {
+        if (v.stringValue !== undefined) out[k] = v.stringValue;
+        else if (v.integerValue !== undefined) out[k] = Number(v.integerValue);
+        else if (v.doubleValue !== undefined) out[k] = Number(v.doubleValue);
+        else if (v.booleanValue !== undefined) out[k] = v.booleanValue;
+        else if (v.timestampValue !== undefined) out[k] = v.timestampValue;
+        else out[k] = null;
+    }
+    return out;
 }
 
 /* ── Build HTML email ── */
@@ -132,11 +181,11 @@ function buildHtml(today, allTime, todayTxs) {
             <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:0 0 12px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
                 <thead>
                     <tr style="background:#f9fafb;">
-                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;letter-spacing:0.05em;">Date</th>
-                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;letter-spacing:0.05em;">Description</th>
-                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;letter-spacing:0.05em;">${sec.key === 'sales' ? 'Customer' : '—'}</th>
-                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;letter-spacing:0.05em;">${sec.key === 'sales' ? 'Phone' : '—'}</th>
-                        <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:#6b7280;letter-spacing:0.05em;">Amount</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;">Date</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;">Description</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;">${sec.key === 'sales' ? 'Customer' : '—'}</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;">${sec.key === 'sales' ? 'Phone' : '—'}</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:#6b7280;">Amount</th>
                     </tr>
                 </thead>
                 <tbody>${rows}</tbody>
@@ -151,43 +200,31 @@ function buildHtml(today, allTime, todayTxs) {
         </div>`;
     }).join('');
 
-    return `
-<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <title>Daily Business Report — ${fmtDate(today)}</title>
-</head>
+<head><meta charset="UTF-8"/><title>Daily Report — ${fmtDate(today)}</title></head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;">
     <div style="max-width:700px;margin:0 auto;padding:24px;">
-
-        <!-- Header -->
         <div style="background:linear-gradient(135deg,#1e3a5f 0%,#0f766e 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;text-align:center;">
             <div style="font-size:32px;margin-bottom:8px;">🧸</div>
             <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;">Bismillah Toys</h1>
             <p style="margin:6px 0 0;color:#a5f3fc;font-size:15px;">Daily Business Report — ${fmtDate(today)}</p>
         </div>
-
-        <!-- Net Summary card -->
         <div style="background:#fff;border-radius:12px;padding:20px 24px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);display:flex;gap:16px;flex-wrap:wrap;">
             <div style="flex:1;min-width:130px;text-align:center;padding:12px;background:#f0fdf4;border-radius:8px;">
-                <p style="margin:0;font-size:11px;text-transform:uppercase;color:#6b7280;letter-spacing:0.05em;">Today's Net</p>
+                <p style="margin:0;font-size:11px;text-transform:uppercase;color:#6b7280;">Today's Net</p>
                 <p style="margin:4px 0 0;font-size:22px;font-weight:800;color:${netToday >= 0 ? '#16a34a' : '#dc2626'};">${inr(Math.abs(netToday))}</p>
                 <p style="margin:2px 0 0;font-size:11px;color:#6b7280;">${netToday >= 0 ? 'Profit' : 'Loss'}</p>
             </div>
             ${SECTIONS.map(s => `
             <div style="flex:1;min-width:130px;text-align:center;padding:12px;background:#f9fafb;border-radius:8px;">
-                <p style="margin:0;font-size:11px;text-transform:uppercase;color:#6b7280;letter-spacing:0.05em;">${s.emoji} ${s.label} All-time</p>
+                <p style="margin:0;font-size:11px;text-transform:uppercase;color:#6b7280;">${s.emoji} ${s.label} All-time</p>
                 <p style="margin:4px 0 0;font-size:18px;font-weight:700;color:${s.color};">${inr(allTime[s.key])}</p>
             </div>`).join('')}
         </div>
-
-        <!-- Section tables -->
         ${sectionHtml}
-
-        <!-- Footer -->
         <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:24px;">
-            This report was automatically generated at 11:30 PM IST by the Business Tracker system.
+            Auto-generated at 11:30 PM IST by Bismillah Toys Business Tracker.
         </p>
     </div>
 </body>
@@ -196,7 +233,6 @@ function buildHtml(today, allTime, todayTxs) {
 
 /* ── Main handler ── */
 export default async function handler(req, res) {
-    // Security: only allow GET from Vercel cron (with matching secret) or our own calls
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret) {
         const authHeader = req.headers['authorization'];
@@ -206,15 +242,28 @@ export default async function handler(req, res) {
     }
 
     try {
-        const db = getAdminDb();
-        const { today, allTime, todayTxs } = await fetchData(db);
+        // Parse service account
+        const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+        if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var missing');
+        let sa;
+        if (raw.trim().startsWith('{')) {
+            sa = JSON.parse(raw);
+        } else {
+            sa = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+        }
+        if (sa.private_key?.includes('\\n')) {
+            sa.private_key = sa.private_key.replace(/\\n/g, '\n');
+        }
+
+        // Get OAuth2 token & fetch data
+        const token = await getAccessToken(sa);
+        const { today, allTime, todayTxs } = await fetchData(sa.project_id, token);
 
         const resend = new Resend(process.env.RESEND_API_KEY);
-
+        const txCount = Object.values(todayTxs).reduce((s, txs) => s + txs.length, 0);
         const totalToday = Object.values(todayTxs).reduce(
             (sum, txs) => sum + txs.reduce((s, t) => s + Number(t.amount || 0), 0), 0
         );
-        const txCount = Object.values(todayTxs).reduce((s, txs) => s + txs.length, 0);
 
         const { data, error } = await resend.emails.send({
             from: 'Bismillah Toys <onboarding@resend.dev>',
