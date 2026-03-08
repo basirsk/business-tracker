@@ -6,6 +6,7 @@ import {
     signInWithEmailAndPassword,
     GoogleAuthProvider,
     signInWithPopup,
+    signOut,
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import toast from 'react-hot-toast';
@@ -31,7 +32,13 @@ export default function Login() {
         if (!validate()) return;
         setLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
+            const cred = await signInWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
+            const userEmail = cred.user.email;
+            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'bismillahtoyskolkata@gmail.com') {
+                await signOut(auth);
+                toast.error('you are not allowed to login');
+                return;
+            }
             toast.success('Welcome back!');
             navigate('/dashboard');
         } catch (err) {
@@ -50,7 +57,13 @@ export default function Login() {
     const handleGoogle = async () => {
         setLoading(true);
         try {
-            await signInWithPopup(auth, new GoogleAuthProvider());
+            const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+            const userEmail = cred.user.email;
+            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'bismillahtoyskolkata@gmail.com') {
+                await signOut(auth);
+                toast.error('you are not allowed to login');
+                return;
+            }
             navigate('/dashboard');
         } catch {
             toast.error('Google sign-in failed.');

@@ -7,6 +7,7 @@ import {
     updateProfile,
     GoogleAuthProvider,
     signInWithPopup,
+    signOut,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -38,6 +39,12 @@ export default function Signup() {
         setLoading(true);
         try {
             const cred = await createUserWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
+            const userEmail = cred.user.email;
+            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'bismillahtoyskolkata@gmail.com') {
+                await signOut(auth);
+                toast.error('you are not allowed to login');
+                return;
+            }
             await updateProfile(cred.user, { displayName: form.name.trim() });
             // Store extra profile in Firestore
             await setDoc(doc(db, 'bt_users', cred.user.uid), {
@@ -64,6 +71,12 @@ export default function Signup() {
         setLoading(true);
         try {
             const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+            const userEmail = cred.user.email;
+            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'bismillahtoyskolkata@gmail.com') {
+                await signOut(auth);
+                toast.error('you are not allowed to login');
+                return;
+            }
             // Create profile doc if it doesn't exist
             await setDoc(doc(db, 'bt_users', cred.user.uid), {
                 uid: cred.user.uid,
