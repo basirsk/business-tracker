@@ -36,15 +36,16 @@ export default function Signup() {
     const handleSubmit = async (ev) => {
         ev.preventDefault();
         if (!validate()) return;
+
+        const checkEmail = form.email.trim().toLowerCase();
+        if (checkEmail !== 'culebasir@gmail.com' && checkEmail !== 'bismillahtoyskolkata@gmail.com') {
+            toast.error('You are not allowed to create acount');
+            return;
+        }
+
         setLoading(true);
         try {
-            const cred = await createUserWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
-            const userEmail = cred.user.email;
-            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'bismillahtoyskolkata@gmail.com') {
-                await signOut(auth);
-                toast.error('you are not allowed to login');
-                return;
-            }
+            const cred = await createUserWithEmailAndPassword(auth, checkEmail, form.password);
             await updateProfile(cred.user, { displayName: form.name.trim() });
             // Store extra profile in Firestore
             await setDoc(doc(db, 'bt_users', cred.user.uid), {
@@ -73,8 +74,9 @@ export default function Signup() {
             const cred = await signInWithPopup(auth, new GoogleAuthProvider());
             const userEmail = cred.user.email;
             if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'bismillahtoyskolkata@gmail.com') {
+                await cred.user.delete().catch(() => { });
                 await signOut(auth);
-                toast.error('you are not allowed to login');
+                toast.error('You are not allowed to create acount');
                 return;
             }
             // Create profile doc if it doesn't exist
