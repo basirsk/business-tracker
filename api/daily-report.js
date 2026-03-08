@@ -10,13 +10,18 @@
  *   CRON_SECRET              — random secret string
  */
 
+import { createSign } from 'crypto';
 import { Resend } from 'resend';
+
+const b64url = (str) =>
+    Buffer.from(str).toString('base64')
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
 /* ── Google OAuth2 token from service account ── */
 async function getAccessToken(sa) {
     const now = Math.floor(Date.now() / 1000);
-    const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-    const payload = btoa(JSON.stringify({
+    const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+    const payload = b64url(JSON.stringify({
         iss: sa.client_email,
         scope: 'https://www.googleapis.com/auth/datastore',
         aud: 'https://oauth2.googleapis.com/token',
@@ -24,22 +29,14 @@ async function getAccessToken(sa) {
         exp: now + 3600,
     }));
 
-    // Sign with private key using WebCrypto
+    // Sign with Node.js crypto (RS256)
     const pemKey = sa.private_key.replace(/\\n/g, '\n');
-    const keyDer = pemToDer(pemKey);
-    const cryptoKey = await crypto.subtle.importKey(
-        'pkcs8', keyDer,
-        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-        false, ['sign']
-    );
-
     const sigInput = `${header}.${payload}`;
-    const sigBytes = await crypto.subtle.sign(
-        'RSASSA-PKCS1-v1_5', cryptoKey,
-        new TextEncoder().encode(sigInput)
-    );
-    const sig = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
-    const jwt = `${sigInput}.${sig.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')}`;
+    const signer = createSign('RSA-SHA256');
+    signer.update(sigInput);
+    const sig = signer.sign(pemKey, 'base64')
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const jwt = `${sigInput}.${sig}`;
 
     // Exchange JWT for access token
     const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -50,14 +47,6 @@ async function getAccessToken(sa) {
     const data = await res.json();
     if (!data.access_token) throw new Error('Token error: ' + JSON.stringify(data));
     return data.access_token;
-}
-
-function pemToDer(pem) {
-    const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes.buffer;
 }
 
 /* ── Section metadata ── */
