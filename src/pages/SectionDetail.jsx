@@ -141,8 +141,7 @@ export default function SectionDetail() {
         try {
             const q = query(
                 collection(db, 'bt_transactions'),
-                where('section', '==', section),
-                where('uid', '==', user.uid)
+                where('section', '==', section)
             );
             const snap = await getDocs(q);
             setTransactions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -637,11 +636,11 @@ export default function SectionDetail() {
                                             {/* Phone */}
                                             <div>
                                                 <label htmlFor="field-phone" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                                    <Phone className="w-3.5 h-3.5" /> Phone Number <span style={{fontSize:'10px',color:'#9ca3af'}}>(10 digits)</span>
+                                                    <Phone className="w-3.5 h-3.5" /> Phone Number <span style={{ fontSize: '10px', color: '#9ca3af' }}>(10 digits)</span>
                                                 </label>
                                                 <input id="field-phone" type="tel"
                                                     value={form.phone}
-                                                    onChange={e => { const d = e.target.value.replace(/\D/g,'').slice(0,10); setForm(p => ({ ...p, phone: d })); setFormErrors(p => ({ ...p, phone: '' })); }}
+                                                    onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 10); setForm(p => ({ ...p, phone: d })); setFormErrors(p => ({ ...p, phone: '' })); }}
                                                     placeholder="e.g. 9876543210"
                                                     maxLength={10}
                                                     inputMode="numeric"

@@ -84,7 +84,7 @@ export default function Dashboard() {
         if (!user) return;
         setLoading(true);
         try {
-            const q = query(collection(db, 'bt_transactions'), where('uid', '==', user.uid));
+            const q = query(collection(db, 'bt_transactions'));
             const snap = await getDocs(q);
             setAllTx(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch {

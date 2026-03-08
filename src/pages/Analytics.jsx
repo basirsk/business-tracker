@@ -62,7 +62,7 @@ export default function Analytics() {
         if (!user) return;
         setLoading(true);
         try {
-            const snap = await getDocs(query(collection(db, 'bt_transactions'), where('uid', '==', user.uid)));
+            const snap = await getDocs(query(collection(db, 'bt_transactions')));
             setAllTx(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch { toast.error('Failed to load data.'); }
         finally { setLoading(false); }
