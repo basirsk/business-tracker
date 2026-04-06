@@ -57,6 +57,16 @@ const SECTION_META = {
         formHead: 'bg-gradient-to-r from-amber-500 to-orange-600',
         descPlaceholder: 'e.g. Retail sales — 3 Mar 2026',
     },
+    cash_in_hand: {
+        label: 'Cash In Hand',
+        emoji: '💵',
+        gradient: 'from-purple-500 to-purple-700',
+        badge: 'bg-purple-100 text-purple-700',
+        ring: 'focus:ring-purple-400',
+        btn: 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-400',
+        formHead: 'bg-gradient-to-r from-purple-600 to-purple-700',
+        descPlaceholder: 'e.g. With Raju',
+    },
 };
 
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'UPI', 'Cheque', 'Credit Card', 'Other'];
@@ -161,7 +171,7 @@ export default function SectionDetail() {
         if (!form.date) e.date = 'Date is required';
         if (!form.amount || isNaN(+form.amount) || +form.amount <= 0)
             e.amount = 'Enter a valid positive amount';
-        if (!form.description.trim()) e.description = 'Description is required';
+        if (!form.description.trim()) e.description = section === 'cash_in_hand' ? 'With Whom is required' : 'Description is required';
         if (section === 'sales') {
             if (!form.customerName.trim()) e.customerName = 'Customer name is required';
             if (form.phone && !/^[0-9]{10}$/.test(form.phone.trim()))
@@ -329,7 +339,7 @@ export default function SectionDetail() {
         if (!editForm.date) e.date = 'Date is required';
         if (!editForm.amount || isNaN(+editForm.amount) || +editForm.amount <= 0)
             e.amount = 'Enter a valid positive amount';
-        if (!editForm.description.trim()) e.description = 'Description is required';
+        if (!editForm.description.trim()) e.description = section === 'cash_in_hand' ? 'With Whom is required' : 'Description is required';
         if (section === 'sales') {
             if (!editForm.customerName.trim()) e.customerName = 'Customer name is required';
             if (editForm.phone && !/^[0-9]{10}$/.test(editForm.phone.trim()))
@@ -566,7 +576,7 @@ export default function SectionDetail() {
                                         {/* Description */}
                                         <div className="sm:col-span-2">
                                             <label htmlFor="field-desc" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                                <FileText className="w-3.5 h-3.5" /> Description / Name
+                                                <FileText className="w-3.5 h-3.5" /> {section === 'cash_in_hand' ? 'With Whom' : 'Description / Name'}
                                             </label>
                                             <input
                                                 id="field-desc" type="text"
