@@ -76,6 +76,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const { user } = useAuthState();
     const [allTx, setAllTx] = useState([]);
+    const [inventory, setInventory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState('month');
 
@@ -87,6 +88,9 @@ export default function Dashboard() {
             const q = query(collection(db, 'bt_transactions'));
             const snap = await getDocs(q);
             setAllTx(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+            const invSnap = await getDocs(query(collection(db, 'bt_inventory')));
+            setInventory(invSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch (err) {
             console.error("Dashboard fetch error:", err);
             toast.error('Failed to load data: ' + err.message);
@@ -109,6 +113,9 @@ export default function Dashboard() {
     );
 
     const netProfit = (totals.sales + totals.investor) - (totals.vendor + totals.expense);
+
+    const invActive = inventory.filter(i => i.status === 'Active').length;
+    const invDisbursed = inventory.filter(i => i.status === 'Disbursed').length;
 
     /* Recent activity — last 6 transactions across all sections */
     const recent = [...allTx]
@@ -247,6 +254,36 @@ export default function Dashboard() {
                             </div>
                         </motion.button>
                     ))}
+                    <motion.button
+                        id={`card-inventory`}
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: SECTIONS.length * 0.07 }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => navigate(`/inventory`)}
+                        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-600 via-cyan-700 to-blue-800 text-left cursor-pointer focus-visible:ring-4 focus-visible:ring-cyan-500 active:brightness-90 transition-all`}
+                        style={{ minHeight: 140 }} aria-label={`Open Inventory`}
+                    >
+                        <span className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white/10 pointer-events-none" />
+                        <div className="relative z-10 p-4 h-full flex flex-col justify-between gap-2">
+                            <div className="flex items-start justify-between">
+                                <div className="min-w-0">
+                                    <p className="text-white font-bold text-sm sm:text-base leading-tight">Inventory</p>
+                                    <p className="text-white/60 text-xs mt-0.5 hidden sm:block">Stock Management</p>
+                                </div>
+                                <span className="text-2xl sm:text-3xl leading-none drop-shadow-sm flex-shrink-0">📦</span>
+                            </div>
+                            <div>
+                                {loading
+                                    ? <div className="h-7 w-20 bg-white/20 rounded-lg animate-pulse" />
+                                    : <>
+                                        <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">{invActive}</p>
+                                        <p className="text-white/50 text-xs mt-0.5">
+                                            Active · {invDisbursed} Disbursed
+                                        </p>
+                                    </>
+                                }
+                            </div>
+                        </div>
+                    </motion.button>
                 </div>
 
                 {/* ── Recent Activity ── */}
