@@ -64,8 +64,10 @@ export default function Analytics() {
         try {
             const snap = await getDocs(query(collection(db, 'bt_transactions')));
             setAllTx(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        } catch { toast.error('Failed to load data.'); }
-        finally { setLoading(false); }
+        } catch (err) {
+            console.error(err);
+            toast.error('Failed to load data: ' + err.message);
+        } finally { setLoading(false); }
     }, [user]);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);

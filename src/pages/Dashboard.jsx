@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     BarChart3, LogOut, RefreshCw, ArrowRight,
     TrendingUp, TrendingDown, Users, ShoppingCart,
-    Activity, Clock, CalendarDays, BarChart2,
+    Activity, Clock, CalendarDays, BarChart2, Package
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -87,8 +87,9 @@ export default function Dashboard() {
             const q = query(collection(db, 'bt_transactions'));
             const snap = await getDocs(q);
             setAllTx(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        } catch {
-            toast.error('Failed to load data.');
+        } catch (err) {
+            console.error("Dashboard fetch error:", err);
+            toast.error('Failed to load data: ' + err.message);
         } finally {
             setLoading(false);
         }
@@ -135,6 +136,11 @@ export default function Dashboard() {
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
+                        <button onClick={() => navigate('/inventory')} aria-label="Inventory"
+                            className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white px-3 h-9 rounded-xl text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-slate-500 mr-1 hidden sm:flex items-center gap-1.5">
+                            <Package className="w-4 h-4" />
+                            <span>Inventory</span>
+                        </button>
                         <button onClick={fetchAll} disabled={loading} aria-label="Refresh data"
                             className="btn-icon text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-slate-500">
                             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -323,6 +329,11 @@ export default function Dashboard() {
                     className="flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-indigo-400 active:bg-slate-800 transition-colors">
                     <BarChart3 className="w-5 h-5" />
                     <span className="text-[10px] font-semibold">Dashboard</span>
+                </button>
+                <button onClick={() => navigate('/inventory')} aria-label="Inventory"
+                    className="flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-slate-500 hover:text-slate-300 active:bg-slate-800 transition-colors">
+                    <Package className="w-5 h-5" />
+                    <span className="text-[10px] font-semibold">Inventory</span>
                 </button>
                 <button onClick={() => navigate('/analytics')} aria-label="Analytics"
                     className="flex-1 flex flex-col items-center justify-center gap-1 py-3 min-h-[56px] text-slate-500 hover:text-slate-300 active:bg-slate-800 transition-colors">

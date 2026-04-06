@@ -9,6 +9,7 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SectionDetail = lazy(() => import('./pages/SectionDetail'));
 const Analytics = lazy(() => import('./pages/Analytics'));
+const Inventory = lazy(() => import('./pages/Inventory'));
 
 const Spinner = () => (
     <div className="min-h-screen flex items-center justify-center bg-slate-900">
@@ -42,6 +43,7 @@ function App() {
                     <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
                     <Route path="/section/:id" element={<PrivateRoute><SectionDetail /></PrivateRoute>} />
                     <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
+                    <Route path="/inventory" element={<PrivateRoute><Inventory /></PrivateRoute>} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
             </Suspense>
