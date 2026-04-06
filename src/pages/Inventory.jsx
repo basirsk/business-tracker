@@ -105,6 +105,9 @@ export default function Inventory() {
         view === 'active' ? item.status === 'Active' : item.status === 'Disbursed'
     );
 
+    const countBolpur = filteredInventory.filter(i => i.sourceName === 'Bolpur').length;
+    const countKatwa = filteredInventory.filter(i => i.sourceName === 'Katwa').length;
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#0d1424] to-slate-900 pb-20 sm:pb-8">
             <header className="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
@@ -132,7 +135,7 @@ export default function Inventory() {
                 </div>
             </header>
 
-            <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+            <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
 
                 <AnimatePresence>
                     {showForm && (
@@ -194,6 +197,17 @@ export default function Inventory() {
                     <button onClick={() => setView('disbursed')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${view === 'disbursed' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>
                         Disbursed
                     </button>
+                </div>
+
+                <div className="flex items-center gap-6 px-4 py-1">
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                        <span className="text-slate-400">Bolpur: <strong className="text-slate-200">{countBolpur}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
+                        <span className="text-slate-400">Katwa: <strong className="text-slate-200">{countKatwa}</strong></span>
+                    </div>
                 </div>
 
                 <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
