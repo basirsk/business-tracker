@@ -58,6 +58,8 @@ export default function Inventory() {
         status: 'Active'
     });
 
+    const [disburseModal, setDisburseModal] = useState({ open: false, item: null, qty: 1, purpose: '' });
+
     const [modelSearch, setModelSearch] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
     const [isCustomModel, setIsCustomModel] = useState(false);
@@ -78,9 +80,9 @@ export default function Inventory() {
 
     const handleAdd = async (e) => {
         e.preventDefault();
-        
+
         const finalModelName = isCustomModel ? formData.modelName.trim() : modelSearch.trim();
-        if(!finalModelName) {
+        if (!finalModelName) {
             toast.error('Please specify a Model Name');
             return;
         }
@@ -122,37 +124,39 @@ export default function Inventory() {
         }
     };
 
-    const handleMarkDisbursed = async (item) => {
-        if (item.quantity <= 0) return toast.error("Out of stock!");
-        
-        const qStr = window.prompt(`How many units of ${item.modelName} are being disbursed? (Max ${item.quantity})`, "1");
-        if (qStr === null) return;
-        const p = parseInt(qStr);
-        
-        if (isNaN(p) || p <= 0) return toast.error("Invalid quantity entered.");
-        if (p > item.quantity) return toast.error(`Only ${item.quantity} units available in stock.`);
-        
-        const purpose = window.prompt("Recipient / purpose (optional):", "");
-        if (purpose === null) return; // cancelled
+    const handleMarkDisbursed = (item) => {
+        if (item.quantity <= 0) return toast.error("Cannot disburse — this item is out of stock.");
+        setDisburseModal({ open: true, item, qty: 1, purpose: '' });
+    };
+
+    const confirmDisbursement = async () => {
+        const { item, qty, purpose } = disburseModal;
+        if (!item || qty <= 0 || qty > item.quantity) return;
 
         const now = new Date().toISOString();
         try {
-            const newQty = item.quantity - p;
+            const newQty = item.quantity - qty;
+
+            // Deduct stock from active item
             await updateDoc(doc(db, 'bt_inventory', item.id), {
                 quantity: newQty
             });
 
+            // Create disbursement log strictly
             await addDoc(collection(db, 'bt_inventory'), {
-                ...item,
-                id: undefined, // Create new ID
+                modelName: item.modelName,
+                sourceName: item.sourceName,
+                dateOfEntry: item.dateOfEntry,
+                addedBy: item.addedBy || user.uid,
                 status: 'Disbursed',
-                quantity: p,
+                quantity: qty,
                 dateOfDisbursed: now,
                 purpose: purpose || 'N/A',
                 remainingStock: newQty,
                 createdAt: now,
             });
-            toast.success(`${p} units disbursed!`);
+            toast.success(`${qty} units disbursed!`);
+            setDisburseModal({ open: false, item: null, qty: 1, purpose: '' });
         } catch (err) {
             toast.error(err.message);
         }
@@ -181,10 +185,13 @@ export default function Inventory() {
     const countBolpur = filteredInventory
         .filter(i => i.sourceName === 'Bolpur' && i.status === 'Active')
         .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
-        
+
     const countKatwa = filteredInventory
         .filter(i => i.sourceName === 'Katwa' && i.status === 'Active')
         .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+
+    const isDisburseOver = disburseModal.item && disburseModal.qty > disburseModal.item.quantity;
+    const isDisburseZero = disburseModal.qty <= 0;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#0d1424] to-slate-900 pb-20 sm:pb-8">
@@ -232,9 +239,9 @@ export default function Inventory() {
                                     <label className="block text-xs font-semibold text-slate-400 mb-1">Model Name</label>
                                     {!isCustomModel ? (
                                         <div className="relative">
-                                            <input 
-                                                type="text" 
-                                                value={modelSearch} 
+                                            <input
+                                                type="text"
+                                                value={modelSearch}
                                                 onChange={(e) => {
                                                     setModelSearch(e.target.value);
                                                     setShowDropdown(true);
@@ -248,8 +255,8 @@ export default function Inventory() {
                                             {showDropdown && (
                                                 <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto">
                                                     {MODEL_OPTIONS.filter(m => m.toLowerCase().includes(modelSearch.toLowerCase())).map(m => (
-                                                        <div 
-                                                            key={m} 
+                                                        <div
+                                                            key={m}
                                                             onMouseDown={() => {
                                                                 setModelSearch(m);
                                                                 setShowDropdown(false);
@@ -259,7 +266,7 @@ export default function Inventory() {
                                                             {m}
                                                         </div>
                                                     ))}
-                                                    <div 
+                                                    <div
                                                         onMouseDown={() => {
                                                             setIsCustomModel(true);
                                                             setModelSearch('');
@@ -275,17 +282,17 @@ export default function Inventory() {
                                         </div>
                                     ) : (
                                         <div className="flex gap-2">
-                                            <input 
-                                                type="text" 
-                                                value={formData.modelName} 
+                                            <input
+                                                type="text"
+                                                value={formData.modelName}
                                                 onChange={e => setFormData({ ...formData, modelName: e.target.value })}
                                                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                                 placeholder="Enter custom model"
                                                 autoFocus
                                                 required={isCustomModel}
                                             />
-                                            <button 
-                                                type="button" 
+                                            <button
+                                                type="button"
                                                 onClick={() => {
                                                     setIsCustomModel(false);
                                                     setFormData(prev => ({ ...prev, modelName: '' }));
@@ -330,6 +337,66 @@ export default function Inventory() {
                     )}
                 </AnimatePresence>
 
+                <AnimatePresence>
+                    {disburseModal.open && disburseModal.item && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl relative"
+                            >
+                                <button onClick={() => setDisburseModal({ open: false, item: null, qty: 1, purpose: '' })}
+                                    className="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                                    <X className="w-5 h-5" />
+                                </button>
+
+                                <h3 className="text-white font-bold text-lg mb-1">Disburse Stock</h3>
+                                <p className="text-slate-400 text-sm mb-5">Model: <strong className="text-slate-200">{disburseModal.item.modelName}</strong></p>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-400 mb-1">How many units are being disbursed?</label>
+                                        <input
+                                            type="number" min="1" max={disburseModal.item.quantity}
+                                            value={disburseModal.qty}
+                                            onChange={e => setDisburseModal(p => ({ ...p, qty: parseInt(e.target.value) || 0 }))}
+                                            className={`w-full bg-slate-900 border ${isDisburseOver || isDisburseZero ? 'border-red-500/50 focus:ring-red-500' : 'border-slate-700 focus:ring-cyan-500'} rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2`}
+                                        />
+                                        {isDisburseOver && (
+                                            <p className="text-red-400 text-xs mt-1.5 font-medium">Only {disburseModal.item.quantity} units available. Please enter a valid quantity.</p>
+                                        )}
+                                        {isDisburseZero && !isDisburseOver && (
+                                            <p className="text-slate-500 text-xs mt-1.5">Enter a quantity greater than 0.</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-400 mb-1">Recipient / Purpose (Optional)</label>
+                                        <input
+                                            type="text"
+                                            value={disburseModal.purpose}
+                                            onChange={e => setDisburseModal(p => ({ ...p, purpose: e.target.value }))}
+                                            placeholder="e.g. Sent to Front Display"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-6 flex justify-end gap-3">
+                                    <button onClick={() => setDisburseModal({ open: false, item: null, qty: 1, purpose: '' })}
+                                        className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-700 transition">
+                                        Cancel
+                                    </button>
+                                    <button onClick={confirmDisbursement}
+                                        disabled={isDisburseOver || isDisburseZero}
+                                        className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-xl text-sm font-bold transition">
+                                        Confirm
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
                 <div className="flex bg-slate-800/50 p-1 rounded-xl">
                     <button onClick={() => setView('active')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${view === 'active' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>
                         Active Stock
@@ -367,22 +434,22 @@ export default function Inventory() {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <h4 className="text-slate-100 font-bold text-lg">{item.modelName}</h4>
-                                            
+
                                             {view === 'active' && (
                                                 <div className="flex items-center gap-2 ml-2">
                                                     <span className="text-slate-400 text-xs">Qty:</span>
-                                                    <input 
+                                                    <input
                                                         type="number" min="0"
                                                         defaultValue={item.quantity}
                                                         onBlur={(e) => handleUpdateQuantity(item.id, item.quantity, e)}
                                                         onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
                                                         className="w-14 bg-slate-900 border border-slate-600 focus:border-cyan-500 rounded px-1.5 py-0.5 text-center text-white text-sm focus:outline-none"
                                                     />
-                                                    {item.quantity <= 0 ? 
+                                                    {item.quantity <= 0 ?
                                                         <span className="bg-red-900/50 text-red-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">🔴 Out of Stock</span> :
-                                                     item.quantity < 3 ? 
-                                                        <span className="bg-yellow-900/50 text-yellow-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">🟡 Low Stock</span> :
-                                                        <span className="bg-green-900/50 text-green-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">🟢 In Stock</span>}
+                                                        item.quantity < 3 ?
+                                                            <span className="bg-yellow-900/50 text-yellow-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">🟡 Low Stock</span> :
+                                                            <span className="bg-green-900/50 text-green-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">🟢 In Stock</span>}
                                                 </div>
                                             )}
 
@@ -396,7 +463,7 @@ export default function Inventory() {
                                         </div>
                                         <div className="text-slate-400 text-sm flex flex-wrap gap-x-4 gap-y-1">
                                             {view === 'active' && <span><span className="text-slate-500 mr-1">Entry:</span>{fmtDate(item.dateOfEntry)}</span>}
-                                            
+
                                             {view === 'disbursed' && (
                                                 <>
                                                     <span><span className="text-slate-500 mr-1">Time:</span>{fmtDate(item.dateOfDisbursed)}</span>
@@ -408,9 +475,9 @@ export default function Inventory() {
                                     </div>
                                     <div className="flex items-center gap-2 self-end sm:self-auto mt-2 sm:mt-0 flex-shrink-0">
                                         {view === 'active' && (
-                                            <button onClick={() => handleMarkDisbursed(item)} 
-                                                    disabled={item.quantity <= 0}
-                                                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition ${item.quantity <= 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>
+                                            <button onClick={() => handleMarkDisbursed(item)}
+                                                disabled={item.quantity <= 0}
+                                                className={`px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition ${item.quantity <= 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>
                                                 <Upload className="w-4 h-4" /> Disburse
                                             </button>
                                         )}
