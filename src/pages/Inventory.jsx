@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ArrowLeft, Plus, Trash2, PackageSearch, PackageCheck, Package, Upload
+    ArrowLeft, Plus, Trash2, PackageSearch, PackageCheck, Package, Upload, X
 } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -10,6 +10,27 @@ import { useAuthState } from '../hooks/useAuthState';
 import toast from 'react-hot-toast';
 
 const SOURCES = ['Bolpur', 'Katwa'];
+
+const MODEL_OPTIONS = [
+    "JEEP - BH80A (GREY)", "JEEP - BH80B (BLACK)", "JEEP - BH80C (RED)", "JEEP - BH80D (BLACK)",
+    "JEEP - BH80E (GREY)", "JEEP - EOD (RED)", "JEEP - 528 (RED)", "JEEP - 908 (RED)",
+    "JEEP - 888BMW (RED)", "JEEP - G63 (RED)", "JEEP - 5588 (RED)", "JEEP - 6699 (GREY)",
+    "JEEP - 518 (RED)", "JEEP - 9111GT1 (RED)", "JEEP - HOOPER (WHITE)", "JEEP - HAIZER (WHITE & GREEN)",
+    "JEEP - 6100 (BLACK)", "JEEP - POGO (BLACK)", "JEEP - J66 (RED)", "JEEP - MERCEDES POGO (BLUE)",
+    "JEEP - 2188UT (RED)", "JEEP - 1200 (YELLOW)", "JEEP - 1200P (BLUE)", "JEEP - HORNEST (ORANGE)",
+    "JEEP - 009F (BLACK)", "JEEP - 2288 (BLACK & GREEN)", "JEEP - 2488 (YELLOW)", "JEEP - 502 (GREY)",
+    "JEEP - HUMMER (RED & BLACK)", "JEEP - 1166UT (BLACK & GREEN)", "JEEP - BEAST (RED)",
+    "JEEP - JOHN DEERE (RED)", "JEEP - RUBICON (RED)", "JEEP - 1699 (WHITE)",
+    "BIKE - ELECTRA (YELLOW)", "BIKE - 6622 (RED)", "BIKE - BOXER (RED)", "BIKE - HARLEY UT (ORANGE)",
+    "BIKE - IGL191 (RED)", "BIKE - HAWK (GREEN)", "BIKE - HARLEY (RED)", "BIKE - R-FIELD (RED)",
+    "BIKE - 818 (RED)", "BIKE - CBR (RED)", "BIKE - DL99 (WHITE)", "BIKE - KITTY (PINK)",
+    "BIKE - GOLDWING (ORANGE)", "BIKE - GOLDWING (BLACK & RED)", "BIKE - DL99 (RED)",
+    "BIKE - POLICE (BLUE)", "BIKE - 3188FW (RED)", "BIKE - 6688 (BLACK & RED)", "BIKE - VESPA (RED)",
+    "BIKE - 316 (PINK)", "BIKE - K1300 (BLUE)", "BIKE - R3UT (RED)", "BIKE - TERRAIN (WHITE)",
+    "BIKE - R3UTP (RED)", "BIKE - HUSKY (RED)", "BIKE - HERO (RED)", "BIKE - R15 (BLUE)",
+    "BIKE - R7 (RED)", "BIKE - 018RR (BLUE)", "BIKE - 018RRP (BLACK)", "BIKE - R15P (RED)",
+    "BIKE - 999RR (YELLOW)", "BIKE - 259 (BLUE)"
+];
 
 const fmtDate = (val) => {
     if (!val) return '—';
@@ -33,11 +54,16 @@ export default function Inventory() {
     const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         modelName: '',
+        quantity: 1,
         dateOfEntry: new Date().toISOString().slice(0, 10),
         dateOfDisbursed: '',
         sourceName: 'Bolpur',
         status: 'Active'
     });
+
+    const [modelSearch, setModelSearch] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [isCustomModel, setIsCustomModel] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -55,10 +81,18 @@ export default function Inventory() {
 
     const handleAdd = async (e) => {
         e.preventDefault();
+        
+        const finalModelName = isCustomModel ? formData.modelName.trim() : modelSearch.trim();
+        if(!finalModelName) {
+            toast.error('Please specify a Model Name');
+            return;
+        }
+
         setSubmitting(true);
         try {
             await addDoc(collection(db, 'bt_inventory'), {
                 ...formData,
+                modelName: finalModelName,
                 createdAt: new Date().toISOString(),
                 addedBy: user.uid
             });
@@ -66,11 +100,15 @@ export default function Inventory() {
             setShowForm(false);
             setFormData({
                 modelName: '',
+                quantity: 1,
                 dateOfEntry: new Date().toISOString().slice(0, 10),
                 dateOfDisbursed: '',
                 sourceName: 'Bolpur',
                 status: 'Active'
             });
+            setModelSearch('');
+            setIsCustomModel(false);
+            setShowDropdown(false);
         } catch (err) {
             toast.error(err.message);
         } finally {
@@ -105,8 +143,13 @@ export default function Inventory() {
         view === 'active' ? item.status === 'Active' : item.status === 'Disbursed'
     );
 
-    const countBolpur = filteredInventory.filter(i => i.sourceName === 'Bolpur').length;
-    const countKatwa = filteredInventory.filter(i => i.sourceName === 'Katwa').length;
+    const countBolpur = filteredInventory
+        .filter(i => i.sourceName === 'Bolpur')
+        .reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
+        
+    const countKatwa = filteredInventory
+        .filter(i => i.sourceName === 'Katwa')
+        .reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#0d1424] to-slate-900 pb-20 sm:pb-8">
@@ -150,11 +193,80 @@ export default function Inventory() {
                                 <Plus className="w-5 h-5 text-cyan-400" /> New Stock Entry
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
+                                <div className="relative">
                                     <label className="block text-xs font-semibold text-slate-400 mb-1">Model Name</label>
-                                    <input required type="text" value={formData.modelName} onChange={e => setFormData({ ...formData, modelName: e.target.value })}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        placeholder="e.g. BMW Sport 12V" />
+                                    {!isCustomModel ? (
+                                        <div className="relative">
+                                            <input 
+                                                type="text" 
+                                                value={modelSearch} 
+                                                onChange={(e) => {
+                                                    setModelSearch(e.target.value);
+                                                    setShowDropdown(true);
+                                                }}
+                                                onFocus={() => setShowDropdown(true)}
+                                                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                placeholder="Search model..."
+                                                required={!isCustomModel}
+                                            />
+                                            {showDropdown && (
+                                                <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                                                    {MODEL_OPTIONS.filter(m => m.toLowerCase().includes(modelSearch.toLowerCase())).map(m => (
+                                                        <div 
+                                                            key={m} 
+                                                            onMouseDown={() => {
+                                                                setModelSearch(m);
+                                                                setShowDropdown(false);
+                                                            }}
+                                                            className="px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 cursor-pointer border-b border-slate-700/50"
+                                                        >
+                                                            {m}
+                                                        </div>
+                                                    ))}
+                                                    <div 
+                                                        onMouseDown={() => {
+                                                            setIsCustomModel(true);
+                                                            setModelSearch('');
+                                                            setFormData(prev => ({ ...prev, modelName: '' }));
+                                                            setShowDropdown(false);
+                                                        }}
+                                                        className="px-4 py-2 text-sm text-cyan-400 hover:bg-slate-700 cursor-pointer font-bold bg-slate-900/50"
+                                                    >
+                                                        + Others (Manual Entry)
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="text" 
+                                                value={formData.modelName} 
+                                                onChange={e => setFormData({ ...formData, modelName: e.target.value })}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                placeholder="Enter custom model"
+                                                autoFocus
+                                                required={isCustomModel}
+                                            />
+                                            <button 
+                                                type="button" 
+                                                onClick={() => {
+                                                    setIsCustomModel(false);
+                                                    setFormData(prev => ({ ...prev, modelName: '' }));
+                                                    setModelSearch('');
+                                                }}
+                                                className="text-xs text-slate-400 hover:text-white px-2 flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1">Quantity</label>
+                                    <input required type="number" min="1" value={formData.quantity} onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-400 mb-1">Source / Shop</label>
@@ -226,7 +338,10 @@ export default function Inventory() {
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
                                             <h4 className="text-slate-100 font-bold text-lg">{item.modelName}</h4>
-                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.sourceName === 'Bolpur' ? 'bg-purple-900/50 text-purple-300 border border-purple-700' : 'bg-pink-900/50 text-pink-300 border border-pink-700'}`}>
+                                            {(item.quantity && item.quantity > 1) ? (
+                                                <span className="text-cyan-400 text-sm ml-2 font-bold bg-cyan-900/40 px-2 py-0.5 rounded-md">x{item.quantity}</span>
+                                            ) : null}
+                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.sourceName === 'Bolpur' ? 'bg-purple-900/50 text-purple-300 border border-purple-700' : 'bg-pink-900/50 text-pink-300 border border-pink-700'} ml-2`}>
                                                 {item.sourceName}
                                             </span>
                                         </div>
