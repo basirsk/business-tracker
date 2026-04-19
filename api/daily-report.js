@@ -196,7 +196,7 @@ function buildHtml(today, allTime, todayTxs) {
     <div style="max-width:700px;margin:0 auto;padding:24px;">
         <div style="background:linear-gradient(135deg,#1e3a5f 0%,#0f766e 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;text-align:center;">
             <div style="font-size:32px;margin-bottom:8px;">🧸</div>
-            <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;">Bismillah Toys</h1>
+            <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;">Gitanjali Toys</h1>
             <p style="margin:6px 0 0;color:#a5f3fc;font-size:15px;">Daily Business Report — ${fmtDate(today)}</p>
         </div>
         <div style="background:#fff;border-radius:12px;padding:20px 24px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);display:flex;gap:16px;flex-wrap:wrap;">
@@ -213,7 +213,7 @@ function buildHtml(today, allTime, todayTxs) {
         </div>
         ${sectionHtml}
         <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:24px;">
-            Auto-generated at 11:30 PM IST by Bismillah Toys Business Tracker.
+            Auto-generated at 11:30 PM IST by Gitanjali Toys Business Tracker.
         </p>
     </div>
 </body>
@@ -255,7 +255,7 @@ export default async function handler(req, res) {
         );
 
         const { data, error } = await resend.emails.send({
-            from: 'Bismillah Toys <onboarding@resend.dev>',
+            from: 'Gitanjali Toys <onboarding@resend.dev>',
             to: ['culebasir@gmail.com'],
             subject: `📊 Daily Report — ${fmtDate(today)} | ${txCount} txn${txCount !== 1 ? 's' : ''} | Total ${inr(totalToday)}`,
             html: buildHtml(today, allTime, todayTxs),

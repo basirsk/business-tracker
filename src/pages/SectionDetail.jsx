@@ -209,7 +209,7 @@ export default function SectionDetail() {
         })();
 
         const message = [
-            `🧸 *Bismillah Toys* — Thank you for your purchase! 🎉`,
+            `🧸 *Gitanjali Toys* — Thank you for your purchase! 🎉`,
             ``,
             `📋 *Order ID:* ${tx.orderId || '—'}`,
             `📦 *Item:* ${tx.description}`,

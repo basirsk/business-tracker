@@ -145,7 +145,7 @@ export default function Dashboard() {
                             <span className="text-base leading-none">🧸</span>
                         </div>
                         <div>
-                            <p className="text-white font-bold text-sm leading-tight">Bismillah Toys</p>
+                            <p className="text-white font-bold text-sm leading-tight">Gitanjali Toys</p>
                             <p className="text-slate-500 text-xs leading-tight hidden sm:block">{greet()}, {firstName} 👋</p>
                         </div>
                     </div>
@@ -201,14 +201,14 @@ export default function Dashboard() {
 
                     <div className="relative z-10 px-6 py-5 flex items-center justify-between gap-4">
                         <div>
-                            {/* Arabic Bismillah motif */}
+                            {/* Arabic Gitanjali motif */}
                             <p className="text-amber-400/60 text-xs font-medium tracking-widest mb-1 select-none">
                                 بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
                             </p>
                             {/* Main brand name */}
                             <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-none">
                                 <span className="bg-gradient-to-r from-amber-300 via-orange-400 to-amber-500 bg-clip-text text-transparent drop-shadow-sm">
-                                    Bismillah
+                                    Gitanjali
                                 </span>
                                 <span className="text-white ml-2">Toys</span>
                             </h1>

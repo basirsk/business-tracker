@@ -1,4 +1,4 @@
-/* ─── Bismillah Toys — Service Worker ──────────────────────────────── */
+/* ─── Gitanjali Toys — Service Worker ──────────────────────────────── */
 const CACHE = 'bt-v1';
 const STATIC = [
     '/',

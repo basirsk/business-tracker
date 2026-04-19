@@ -38,7 +38,7 @@ export default function Signup() {
         if (!validate()) return;
 
         const checkEmail = form.email.trim().toLowerCase();
-        if (checkEmail !== 'culebasir@gmail.com' && checkEmail !== 'bismillahtoyskolkata@gmail.com') {
+        if (checkEmail !== 'culebasir@gmail.com' && checkEmail !== 'gitanjalitoyskolkata@gmail.com') {
             toast.error('You are not allowed to create acount');
             return;
         }
@@ -73,7 +73,7 @@ export default function Signup() {
         try {
             const cred = await signInWithPopup(auth, new GoogleAuthProvider());
             const userEmail = cred.user.email;
-            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'bismillahtoyskolkata@gmail.com') {
+            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'gitanjalitoyskolkata@gmail.com') {
                 await cred.user.delete().catch(() => { });
                 await signOut(auth);
                 toast.error('You are not allowed to create acount');

@@ -34,7 +34,7 @@ export default function Login() {
         try {
             const cred = await signInWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
             const userEmail = cred.user.email;
-            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'bismillahtoyskolkata@gmail.com') {
+            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'gitanjalitoyskolkata@gmail.com') {
                 await signOut(auth);
                 toast.error('you are not allowed to login');
                 return;
@@ -59,7 +59,7 @@ export default function Login() {
         try {
             const cred = await signInWithPopup(auth, new GoogleAuthProvider());
             const userEmail = cred.user.email;
-            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'bismillahtoyskolkata@gmail.com') {
+            if (userEmail !== 'culebasir@gmail.com' && userEmail !== 'gitanjalitoyskolkata@gmail.com') {
                 await signOut(auth);
                 toast.error('you are not allowed to login');
                 return;
