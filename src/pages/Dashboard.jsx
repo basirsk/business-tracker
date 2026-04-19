@@ -109,8 +109,14 @@ export default function Dashboard() {
         SECTIONS.map(s => [s.id, filtered.filter(t => t.section === s.id).reduce((sum, t) => sum + (Number(t.amount) || 0), 0)])
     );
 
+    // Auto-Calculate Cash in Hand
+    totals.cash_in_hand = totals.sales - (totals.vendor + totals.expense);
+
     const counts = Object.fromEntries(
-        SECTIONS.map(s => [s.id, filtered.filter(t => t.section === s.id).length])
+        SECTIONS.map(s => {
+            if (s.id === 'cash_in_hand') return [s.id, 0]; // No individual entries
+            return [s.id, filtered.filter(t => t.section === s.id).length];
+        })
     );
 
     const netProfit = (totals.sales + totals.investor) - (totals.vendor + totals.expense);
@@ -227,10 +233,10 @@ export default function Dashboard() {
                         <motion.button
                             key={sec.id} id={`card-${sec.id}`}
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                            whileTap={{ scale: 0.96 }}
-                            onClick={() => navigate(`/section/${sec.id}`)}
-                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${sec.gradient} text-left cursor-pointer focus-visible:ring-4 ${sec.ring} active:brightness-90 transition-all`}
-                            style={{ minHeight: 140 }} aria-label={`Open ${sec.label}`}
+                            whileTap={sec.id === 'cash_in_hand' ? {} : { scale: 0.96 }}
+                            onClick={() => sec.id === 'cash_in_hand' ? null : navigate(`/section/${sec.id}`)}
+                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${sec.gradient} text-left ${sec.id === 'cash_in_hand' ? 'cursor-default' : 'cursor-pointer focus-visible:ring-4 active:brightness-90'} ${sec.ring} transition-all`}
+                            style={{ minHeight: 140 }} aria-label={sec.id === 'cash_in_hand' ? sec.label : `Open ${sec.label}`}
                         >
                             <span className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white/10 pointer-events-none" />
                             <div className="relative z-10 p-4 h-full flex flex-col justify-between gap-2">
@@ -247,7 +253,7 @@ export default function Dashboard() {
                                         : <>
                                             <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">{fmt(totals[sec.id])}</p>
                                             <p className="text-white/50 text-xs mt-0.5">
-                                                {counts[sec.id]} {counts[sec.id] === 1 ? 'entry' : 'entries'}
+                                                {sec.id === 'cash_in_hand' ? 'Auto-Calculated' : `${counts[sec.id]} ${counts[sec.id] === 1 ? 'entry' : 'entries'}`}
                                             </p>
                                         </>
                                     }

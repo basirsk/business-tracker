@@ -10,13 +10,11 @@ import { db } from '../firebase';
 import { useAuthState } from '../hooks/useAuthState';
 import toast from 'react-hot-toast';
 
-/* ─── Config ────────────────────────────────────────────────────────── */
 const SECTIONS = [
     { id: 'vendor', label: 'Vendor', color: '#3b82f6', badge: 'bg-blue-100 text-blue-800' },
     { id: 'investor', label: 'Investor', color: '#10b981', badge: 'bg-emerald-100 text-emerald-800' },
     { id: 'expense', label: 'Expense', color: '#f43f5e', badge: 'bg-rose-100 text-rose-800' },
     { id: 'sales', label: 'Sales', color: '#f59e0b', badge: 'bg-amber-100 text-amber-800' },
-    { id: 'cash_in_hand', label: 'Cash In Hand', color: '#a855f7', badge: 'bg-purple-100 text-purple-800' },
 ];
 
 /* ─── Helpers ────────────────────────────────────────────────────────── */
