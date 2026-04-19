@@ -25,7 +25,7 @@ const MODEL_OPTIONS = [
     "BIKE - IGL191 (RED)", "BIKE - HAWK (GREEN)", "BIKE - HARLEY (RED)", "BIKE - R-FIELD (RED)",
     "BIKE - 818 (RED)", "BIKE - CBR (RED)", "BIKE - DL99 (WHITE)", "BIKE - KITTY (PINK)",
     "BIKE - GOLDWING (ORANGE)", "BIKE - GOLDWING (BLACK & RED)", "BIKE - DL99 (RED)",
-    "BIKE - POLICE (BLUE)", "BIKE - 3188FW (RED)", "BIKE - 6688 (BLACK & RED)", "BIKE - VESPA (RED)",
+    "BIKE - POLICE (BLUE)", "BIKE - 3188FW (RED)", "BIKE - 6688 (BLACK & RED)", "Vespa Scooty (Single Seater)", "Vespa Scooty (Double Seater)",
     "BIKE - 316 (PINK)", "BIKE - K1300 (BLUE)", "BIKE - R3UT (RED)", "BIKE - TERRAIN (WHITE)",
     "BIKE - R3UTP (RED)", "BIKE - HUSKY (RED)", "BIKE - HERO (RED)", "BIKE - R15 (BLUE)",
     "BIKE - R7 (RED)", "BIKE - 018RR (BLUE)", "BIKE - 018RRP (BLACK)", "BIKE - R15P (RED)",
