@@ -121,8 +121,8 @@ export default function Dashboard() {
 
     const netProfit = (totals.sales + totals.investor) - (totals.vendor + totals.expense);
 
-    const invActive = inventory.filter(i => i.status === 'Active').length;
-    const invDisbursed = inventory.filter(i => i.status === 'Disbursed').length;
+    const invActive = inventory.filter(i => i.status === 'Active').reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const invDisbursed = inventory.filter(i => i.status === 'Disbursed').reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
 
     /* Recent activity — last 6 transactions across all sections */
     const recent = [...allTx]

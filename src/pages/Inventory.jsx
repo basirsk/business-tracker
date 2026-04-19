@@ -9,7 +9,7 @@ import { db } from '../firebase';
 import { useAuthState } from '../hooks/useAuthState';
 import toast from 'react-hot-toast';
 
-const SOURCES = ['Bolpur', 'Katwa'];
+const SOURCES = ['Bolpur'];
 
 const MODEL_OPTIONS = [
     "JEEP - BH80A (GREY)", "JEEP - BH80B (BLACK)", "JEEP - BH80C (RED)", "JEEP - BH80D (BLACK)",
@@ -182,12 +182,8 @@ export default function Inventory() {
         view === 'active' ? item.status === 'Active' : item.status === 'Disbursed'
     );
 
-    const countBolpur = filteredInventory
-        .filter(i => i.sourceName === 'Bolpur' && i.status === 'Active')
-        .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
-
-    const countKatwa = filteredInventory
-        .filter(i => i.sourceName === 'Katwa' && i.status === 'Active')
+    const countTotal = filteredInventory
+        .filter(i => i.status === 'Active')
         .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
 
     const isDisburseOver = disburseModal.item && disburseModal.qty > disburseModal.item.quantity;
@@ -410,11 +406,7 @@ export default function Inventory() {
                     <div className="flex items-center gap-6 px-4 py-1">
                         <div className="flex items-center gap-2 text-sm">
                             <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-                            <span className="text-slate-400">Bolpur Active: <strong className="text-slate-200">{countBolpur}</strong></span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                            <span className="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
-                            <span className="text-slate-400">Katwa Active: <strong className="text-slate-200">{countKatwa}</strong></span>
+                            <span className="text-slate-400">Total Active Stock: <strong className="text-slate-200">{countTotal}</strong></span>
                         </div>
                     </div>
                 )}
