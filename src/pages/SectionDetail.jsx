@@ -58,7 +58,7 @@ const SECTION_META = {
         descPlaceholder: 'e.g. Retail sales — 3 Mar 2026',
     },
     cash_in_hand: {
-        label: 'Cash In Hand',
+        label: 'Total balance in Hand',
         emoji: '💵',
         gradient: 'from-purple-500 to-purple-700',
         badge: 'bg-purple-100 text-purple-700',

@@ -18,7 +18,7 @@ const SECTIONS = [
     { id: 'investor', label: 'Investor', subtitle: 'Investment received', emoji: '💼', Icon: TrendingUp, gradient: 'from-emerald-500 via-emerald-600 to-green-700', glow: 'shadow-emerald-500/30', ring: 'focus-visible:ring-emerald-400' },
     { id: 'expense', label: 'Expense', subtitle: 'Operational costs', emoji: '📋', Icon: TrendingDown, gradient: 'from-rose-500 via-rose-600 to-red-700', glow: 'shadow-rose-500/30', ring: 'focus-visible:ring-rose-400' },
     { id: 'sales', label: 'Total Sales', subtitle: 'Revenue generated', emoji: '🛒', Icon: ShoppingCart, gradient: 'from-amber-500 via-amber-500 to-orange-600', glow: 'shadow-amber-500/30', ring: 'focus-visible:ring-amber-400' },
-    { id: 'cash_in_hand', label: 'Cash In Hand', subtitle: 'Current balances', emoji: '💵', Icon: Activity, gradient: 'from-purple-500 via-purple-600 to-purple-700', glow: 'shadow-purple-500/30', ring: 'focus-visible:ring-purple-400' },
+    { id: 'cash_in_hand', label: 'Total balance in Hand', subtitle: 'Current balances', emoji: '💵', Icon: Activity, gradient: 'from-purple-500 via-purple-600 to-purple-700', glow: 'shadow-purple-500/30', ring: 'focus-visible:ring-purple-400' },
 ];
 
 const PERIODS = [
