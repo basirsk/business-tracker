@@ -78,6 +78,7 @@ const EMPTY_FORM = {
     description: '',
     paymentMethod: 'Cash',
     addedBy: 'Hasibul',          /* shared by all sections */
+    balanceType: 'Cash',         /* cash_in_hand section balance category: Cash or Bank */
     /* ── Sales-only fields ── */
     customerName: '',
     phone: '',
@@ -248,6 +249,9 @@ export default function SectionDetail() {
             description: form.description.trim(),
             paymentMethod: form.paymentMethod,
             addedBy: form.addedBy,          /* all sections */
+            ...(section === 'cash_in_hand' && {
+                balanceType: form.balanceType || 'Cash',
+            }),
             ...(section === 'sales' && {
                 orderId,
                 customerName: form.customerName.trim(),
@@ -324,6 +328,7 @@ export default function SectionDetail() {
             description: tx.description || '',
             paymentMethod: tx.paymentMethod || 'Cash',
             addedBy: tx.addedBy || 'Hasibul',   /* all sections */
+            balanceType: tx.balanceType || 'Cash',
             /* sales fields */
             customerName: tx.customerName || '',
             phone: tx.phone || '',
@@ -359,6 +364,9 @@ export default function SectionDetail() {
             description: editForm.description.trim(),
             paymentMethod: editForm.paymentMethod,
             addedBy: editForm.addedBy,           /* all sections */
+            ...(section === 'cash_in_hand' && {
+                balanceType: editForm.balanceType || 'Cash',
+            }),
             ...(section === 'sales' && {
                 customerName: editForm.customerName.trim(),
                 phone: editForm.phone.trim(),
@@ -459,6 +467,12 @@ export default function SectionDetail() {
 
     const total = transactions.reduce((s, t) => s + (Number(t.amount) || 0), 0);
     const filteredTotal = sorted.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+    const cashEntries = sorted.filter(t => !t.balanceType || t.balanceType === 'Cash');
+    const bankEntries = sorted.filter(t => t.balanceType === 'Bank');
+
+    const cashSubtotal = cashEntries.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const bankSubtotal = bankEntries.reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
     if (!meta) return null;
 
@@ -593,28 +607,52 @@ export default function SectionDetail() {
                                             )}
                                         </div>
 
-                                        {/* Payment Method */}
-                                        <div className="sm:col-span-2">
-                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                                                <CreditCard className="w-3.5 h-3.5" /> Payment Method
-                                            </label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {PAYMENT_METHODS.map((pm) => (
-                                                    <button
-                                                        key={pm} type="button"
-                                                        onClick={() => setForm(p => ({ ...p, paymentMethod: pm }))}
-                                                        aria-pressed={form.paymentMethod === pm}
-                                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all focus:outline-none focus:ring-2 ${meta.ring}
-                            ${form.paymentMethod === pm
-                                                                ? `${meta.btn} text-white border-transparent shadow`
-                                                                : 'border-gray-200 text-gray-500 bg-white hover:border-gray-300'
-                                                            }`}
-                                                    >
-                                                        {pm}
-                                                    </button>
-                                                ))}
+                                        {/* Payment Method or Balance Type (for Cash in Hand) */}
+                                        {section === 'cash_in_hand' ? (
+                                            <div className="sm:col-span-2">
+                                                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                                    💵 Balance Type
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    {['Cash', 'Bank'].map((type) => (
+                                                        <button
+                                                            key={type} type="button"
+                                                            onClick={() => setForm(p => ({ ...p, balanceType: type }))}
+                                                            aria-pressed={form.balanceType === type}
+                                                            className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all focus:outline-none focus:ring-2 ${meta.ring}
+                                                                ${form.balanceType === type
+                                                                    ? `${meta.btn} text-white border-transparent shadow`
+                                                                    : 'border-gray-200 text-gray-500 bg-white hover:border-gray-300'
+                                                                }`}
+                                                        >
+                                                            {type === 'Cash' ? '💵 Cash' : '🏦 Bank'}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div className="sm:col-span-2">
+                                                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                                    <CreditCard className="w-3.5 h-3.5" /> Payment Method
+                                                </label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {PAYMENT_METHODS.map((pm) => (
+                                                        <button
+                                                            key={pm} type="button"
+                                                            onClick={() => setForm(p => ({ ...p, paymentMethod: pm }))}
+                                                            aria-pressed={form.paymentMethod === pm}
+                                                            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all focus:outline-none focus:ring-2 ${meta.ring}
+                                ${form.paymentMethod === pm
+                                                                    ? `${meta.btn} text-white border-transparent shadow`
+                                                                    : 'border-gray-200 text-gray-500 bg-white hover:border-gray-300'
+                                                                }`}
+                                                        >
+                                                            {pm}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* ── Sales-only extra fields ── */}
                                         {section === 'sales' && (<>
@@ -827,172 +865,290 @@ export default function SectionDetail() {
                             </div>
                         )}
 
-                        {/* ── Desktop Table ── */}
+                        {/* ── Desktop & Mobile Segregated Views for Cash In Hand, or Normal Views for others ── */}
                         {!loadingTx && sorted.length > 0 && (
-                            <>
-                                <div className="hidden sm:block overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wider">
-                                                <th className="px-5 py-3 text-left font-semibold">Date</th>
-                                                {section === 'sales' && <>
-                                                    <th className="px-5 py-3 text-left font-semibold">Order ID</th>
-                                                    <th className="px-5 py-3 text-left font-semibold">Customer</th>
-                                                    <th className="px-5 py-3 text-left font-semibold">Added By</th>
-                                                </>}
-                                                <th className="px-5 py-3 text-left font-semibold">Description</th>
-                                                <th className="px-5 py-3 text-left font-semibold">Method</th>
-                                                <th className="px-5 py-3 text-right font-semibold">Amount</th>
-                                                <th className="px-4 py-3" />
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            <AnimatePresence>
-                                                {sorted.map((tx) => (
-                                                    <motion.tr
-                                                        key={tx.id}
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        exit={{ opacity: 0 }}
-                                                        className="hover:bg-gray-50 transition-colors group"
-                                                    >
-                                                        <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap text-xs">{fmtDate(tx.date)}</td>
-                                                        {section === 'sales' && <>
-                                                            <td className="px-5 py-3.5 font-mono text-xs text-amber-600 whitespace-nowrap">
-                                                                {tx.orderId || <span className="text-gray-300">—</span>}
-                                                            </td>
-                                                            <td className="px-5 py-3.5">
-                                                                <div className="text-sm font-semibold text-gray-800">{tx.customerName || '—'}</div>
-                                                                {tx.phone && <div className="text-xs text-gray-400 flex items-center gap-1"><Phone className="w-3 h-3" />{tx.phone}</div>}
-                                                            </td>
-                                                            <td className="px-5 py-3.5 text-xs text-gray-500">{tx.addedBy || '—'}</td>
-                                                        </>}
-                                                        <td className="px-5 py-3.5 text-gray-800 font-medium max-w-xs truncate">{tx.description}</td>
-                                                        <td className="px-5 py-3.5">
-                                                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${meta.badge}`}>
-                                                                {tx.paymentMethod || 'Cash'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-right font-extrabold text-gray-900 whitespace-nowrap">
-                                                            {fmt(tx.amount)}
-                                                        </td>
-                                                        <td className="px-4 py-3.5">
-                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                                {/* WhatsApp — sales only, needs phone */}
-                                                                {section === 'sales' && tx.phone && (
-                                                                    <button
-                                                                        onClick={() => sendWhatsApp(tx)}
-                                                                        aria-label="Send WhatsApp message"
-                                                                        className="p-1.5 rounded-lg text-gray-300 hover:text-green-600 hover:bg-green-50 transition-all focus:outline-none focus:ring-2 focus:ring-green-300"
-                                                                    >
-                                                                        <MessageCircle className="w-4 h-4" />
-                                                                    </button>
-                                                                )}
-                                                                <button
-                                                                    onClick={() => handleEdit(tx)}
-                                                                    aria-label="Edit entry"
-                                                                    className="p-1.5 rounded-lg text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                                                                >
-                                                                    <Pencil className="w-4 h-4" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDelete(tx)}
-                                                                    disabled={deletingId === tx.id}
-                                                                    aria-label="Delete entry"
-                                                                    className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-40"
-                                                                >
-                                                                    {deletingId === tx.id
-                                                                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                                                                        : <Trash2 className="w-4 h-4" />}
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </motion.tr>
-                                                ))}
-                                            </AnimatePresence>
-                                        </tbody>
-                                        <tfoot>
-                                            <tr className="bg-gray-50 border-t-2 border-gray-200">
-                                                <td colSpan={section === 'sales' ? 6 : 3} className="px-5 py-3 text-sm font-semibold text-gray-500">Grand Total</td>
-                                                <td className="px-5 py-3 text-right text-lg font-black text-gray-900">{fmt(total)}</td>
-                                                <td />
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
+                            section === 'cash_in_hand' ? (
+                                <div className="p-4 sm:p-5 space-y-6">
+                                    {/* Subtotals overview cards */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-purple-50/70 border border-purple-100/60 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                                            <span className="text-xs font-bold text-purple-600 tracking-wide uppercase">💵 Cash Balance</span>
+                                            <span className="text-xl font-black text-purple-900 mt-1">{fmt(cashSubtotal)}</span>
+                                        </div>
+                                        <div className="bg-indigo-50/70 border border-indigo-100/60 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                                            <span className="text-xs font-bold text-indigo-600 tracking-wide uppercase">🏦 Bank Balance</span>
+                                            <span className="text-xl font-black text-indigo-900 mt-1">{fmt(bankSubtotal)}</span>
+                                        </div>
+                                    </div>
 
-                                {/* ── Mobile Cards ── */}
-                                <div className="sm:hidden divide-y divide-gray-100">
-                                    <AnimatePresence>
-                                        {sorted.map((tx) => (
-                                            <motion.div
-                                                key={tx.id}
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                className="px-4 py-4 flex items-start gap-3"
-                                            >
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${meta.badge}`}>
-                                                            {tx.paymentMethod || 'Cash'}
-                                                        </span>
-                                                        <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
-                                                        {section === 'sales' && tx.orderId && (
-                                                            <span className="text-xs font-mono text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                                                                {tx.orderId}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {section === 'sales' && tx.customerName && (
-                                                        <p className="text-xs font-semibold text-amber-700 mb-0.5 flex items-center gap-1">
-                                                            <User className="w-3 h-3" />{tx.customerName}
-                                                            {tx.phone && <span className="text-gray-400 font-normal ml-1">· {tx.phone}</span>}
-                                                        </p>
-                                                    )}
-                                                    <p className="text-sm font-semibold text-gray-800 truncate">{tx.description}</p>
-                                                    <p className="text-base font-extrabold text-gray-900 mt-0.5">{fmt(tx.amount)}</p>
-                                                    {section === 'sales' && tx.addedBy && (
-                                                        <p className="text-xs text-gray-400 mt-0.5">Added by {tx.addedBy}</p>
-                                                    )}
-                                                </div>
-                                                {/* WhatsApp button — sales only, needs phone */}
-                                                {section === 'sales' && tx.phone && (
-                                                    <button
-                                                        onClick={() => sendWhatsApp(tx)}
-                                                        aria-label="Send WhatsApp"
-                                                        className="mt-1 p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all focus:outline-none flex-shrink-0"
-                                                    >
-                                                        <MessageCircle className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => handleEdit(tx)}
-                                                    aria-label="Edit entry"
-                                                    className="mt-1 p-2 rounded-lg text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all focus:outline-none flex-shrink-0"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(tx)}
-                                                    disabled={deletingId === tx.id}
-                                                    aria-label="Delete entry"
-                                                    className="mt-1 p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all
-                                   focus:outline-none flex-shrink-0 disabled:opacity-40"
-                                                >
-                                                    {deletingId === tx.id
-                                                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                                                        : <Trash2 className="w-4 h-4" />}
-                                                </button>
-                                            </motion.div>
-                                        ))}
-                                    </AnimatePresence>
-                                    <div className="px-4 py-3 bg-gray-50 flex justify-between items-center">
-                                        <span className="text-sm font-semibold text-gray-500">Grand Total</span>
-                                        <span className="text-base font-black text-gray-900">{fmt(total)}</span>
+                                    {/* Cash Section */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-lg leading-none" aria-hidden="true">💵</span>
+                                                <h3 className="font-extrabold text-gray-800 text-sm">Cash Entries</h3>
+                                            </div>
+                                            <span className="text-[11px] font-bold text-purple-700 bg-purple-100/80 px-2.5 py-0.5 rounded-full">
+                                                {cashEntries.length} {cashEntries.length === 1 ? 'entry' : 'entries'} · Subtotal: {fmt(cashSubtotal)}
+                                            </span>
+                                        </div>
+                                        {cashEntries.length === 0 ? (
+                                            <p className="text-xs text-gray-400 py-4 italic text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">No cash entries found.</p>
+                                        ) : (
+                                            <div className="overflow-x-auto border border-gray-100 rounded-xl shadow-sm">
+                                                <table className="w-full text-sm">
+                                                    <thead>
+                                                        <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wider border-b border-gray-100">
+                                                            <th className="px-4 py-2.5 text-left font-semibold">Date</th>
+                                                            <th className="px-4 py-2.5 text-left font-semibold">With Whom</th>
+                                                            <th className="px-4 py-2.5 text-left font-semibold">Added By</th>
+                                                            <th className="px-4 py-2.5 text-right font-semibold">Amount</th>
+                                                            <th className="px-3 py-2.5" />
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50 text-xs">
+                                                        {cashEntries.map((tx) => (
+                                                            <tr key={tx.id} className="hover:bg-gray-50/50 transition-colors group">
+                                                                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDate(tx.date)}</td>
+                                                                <td className="px-4 py-3 text-gray-800 font-medium truncate max-w-[150px]">{tx.description}</td>
+                                                                <td className="px-4 py-3 text-gray-500">{tx.addedBy || '—'}</td>
+                                                                <td className="px-4 py-3 text-right font-extrabold text-gray-900">{fmt(tx.amount)}</td>
+                                                                <td className="px-3 py-3">
+                                                                    <div className="flex items-center justify-end gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                                                                        <button onClick={() => handleEdit(tx)} aria-label="Edit entry" className="p-1 rounded text-gray-400 hover:text-indigo-500 transition-colors"><Pencil className="w-4 h-4" /></button>
+                                                                        <button onClick={() => handleDelete(tx)} disabled={deletingId === tx.id} aria-label="Delete entry" className="p-1 rounded text-gray-400 hover:text-red-500 transition-colors">
+                                                                            {deletingId === tx.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Bank Section */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-lg leading-none" aria-hidden="true">🏦</span>
+                                                <h3 className="font-extrabold text-gray-800 text-sm">Bank Entries</h3>
+                                            </div>
+                                            <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/80 px-2.5 py-0.5 rounded-full">
+                                                {bankEntries.length} {bankEntries.length === 1 ? 'entry' : 'entries'} · Subtotal: {fmt(bankSubtotal)}
+                                            </span>
+                                        </div>
+                                        {bankEntries.length === 0 ? (
+                                            <p className="text-xs text-gray-400 py-4 italic text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">No bank entries found.</p>
+                                        ) : (
+                                            <div className="overflow-x-auto border border-gray-100 rounded-xl shadow-sm">
+                                                <table className="w-full text-sm">
+                                                    <thead>
+                                                        <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wider border-b border-gray-100">
+                                                            <th className="px-4 py-2.5 text-left font-semibold">Date</th>
+                                                            <th className="px-4 py-2.5 text-left font-semibold">With Whom</th>
+                                                            <th className="px-4 py-2.5 text-left font-semibold">Added By</th>
+                                                            <th className="px-4 py-2.5 text-right font-semibold">Amount</th>
+                                                            <th className="px-3 py-2.5" />
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50 text-xs">
+                                                        {bankEntries.map((tx) => (
+                                                            <tr key={tx.id} className="hover:bg-gray-50/50 transition-colors group">
+                                                                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDate(tx.date)}</td>
+                                                                <td className="px-4 py-3 text-gray-800 font-medium truncate max-w-[150px]">{tx.description}</td>
+                                                                <td className="px-4 py-3 text-gray-500">{tx.addedBy || '—'}</td>
+                                                                <td className="px-4 py-3 text-right font-extrabold text-gray-900">{fmt(tx.amount)}</td>
+                                                                <td className="px-3 py-3">
+                                                                    <div className="flex items-center justify-end gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                                                                        <button onClick={() => handleEdit(tx)} aria-label="Edit entry" className="p-1 rounded text-gray-400 hover:text-indigo-500 transition-colors"><Pencil className="w-4 h-4" /></button>
+                                                                        <button onClick={() => handleDelete(tx)} disabled={deletingId === tx.id} aria-label="Delete entry" className="p-1 rounded text-gray-400 hover:text-red-500 transition-colors">
+                                                                            {deletingId === tx.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Combined Footer */}
+                                    <div className="flex justify-between items-center bg-gray-50 px-4 py-3.5 border border-gray-100 rounded-2xl shadow-inner mt-4">
+                                        <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Combined Grand Total</span>
+                                        <span className="text-xl font-black text-gray-900">{fmt(total)}</span>
                                     </div>
                                 </div>
-                            </>
+                            ) : (
+                                <>
+                                    <div className="hidden sm:block overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wider">
+                                                    <th className="px-5 py-3 text-left font-semibold">Date</th>
+                                                    {section === 'sales' && <>
+                                                        <th className="px-5 py-3 text-left font-semibold">Order ID</th>
+                                                        <th className="px-5 py-3 text-left font-semibold">Customer</th>
+                                                        <th className="px-5 py-3 text-left font-semibold">Added By</th>
+                                                    </>}
+                                                    <th className="px-5 py-3 text-left font-semibold">Description</th>
+                                                    <th className="px-5 py-3 text-left font-semibold">Method</th>
+                                                    <th className="px-5 py-3 text-right font-semibold">Amount</th>
+                                                    <th className="px-4 py-3" />
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50">
+                                                <AnimatePresence>
+                                                    {sorted.map((tx) => (
+                                                        <motion.tr
+                                                            key={tx.id}
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: 1 }}
+                                                            exit={{ opacity: 0 }}
+                                                            className="hover:bg-gray-50 transition-colors group"
+                                                        >
+                                                            <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap text-xs">{fmtDate(tx.date)}</td>
+                                                            {section === 'sales' && <>
+                                                                <td className="px-5 py-3.5 font-mono text-xs text-amber-600 whitespace-nowrap">
+                                                                    {tx.orderId || <span className="text-gray-300">—</span>}
+                                                                </td>
+                                                                <td className="px-5 py-3.5">
+                                                                    <div className="text-sm font-semibold text-gray-800">{tx.customerName || '—'}</div>
+                                                                    {tx.phone && <div className="text-xs text-gray-400 flex items-center gap-1"><Phone className="w-3 h-3" />{tx.phone}</div>}
+                                                                </td>
+                                                                <td className="px-5 py-3.5 text-xs text-gray-500">{tx.addedBy || '—'}</td>
+                                                            </>}
+                                                            <td className="px-5 py-3.5 text-gray-800 font-medium max-w-xs truncate">{tx.description}</td>
+                                                            <td className="px-5 py-3.5">
+                                                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${meta.badge}`}>
+                                                                    {tx.paymentMethod || 'Cash'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-right font-extrabold text-gray-900 whitespace-nowrap">
+                                                                {fmt(tx.amount)}
+                                                            </td>
+                                                            <td className="px-4 py-3.5">
+                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                                    {/* WhatsApp — sales only, needs phone */}
+                                                                    {section === 'sales' && tx.phone && (
+                                                                        <button
+                                                                            onClick={() => sendWhatsApp(tx)}
+                                                                            aria-label="Send WhatsApp message"
+                                                                            className="p-1.5 rounded-lg text-gray-300 hover:text-green-600 hover:bg-green-50 transition-all focus:outline-none focus:ring-2 focus:ring-green-300"
+                                                                        >
+                                                                            <MessageCircle className="w-4 h-4" />
+                                                                        </button>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => handleEdit(tx)}
+                                                                        aria-label="Edit entry"
+                                                                        className="p-1.5 rounded-lg text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                                                    >
+                                                                        <Pencil className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDelete(tx)}
+                                                                        disabled={deletingId === tx.id}
+                                                                        aria-label="Delete entry"
+                                                                        className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-40"
+                                                                    >
+                                                                        {deletingId === tx.id
+                                                                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                                                                            : <Trash2 className="w-4 h-4" />}
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </motion.tr>
+                                                    ))}
+                                                </AnimatePresence>
+                                            </tbody>
+                                            <tfoot>
+                                                <tr className="bg-gray-50 border-t-2 border-gray-200">
+                                                    <td colSpan={section === 'sales' ? 6 : 3} className="px-5 py-3 text-sm font-semibold text-gray-500">Grand Total</td>
+                                                    <td className="px-5 py-3 text-right text-lg font-black text-gray-900">{fmt(total)}</td>
+                                                    <td />
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+
+                                    {/* ── Mobile Cards ── */}
+                                    <div className="sm:hidden divide-y divide-gray-100">
+                                        <AnimatePresence>
+                                            {sorted.map((tx) => (
+                                                <motion.div
+                                                    key={tx.id}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    className="px-4 py-4 flex items-start gap-3"
+                                                >
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${meta.badge}`}>
+                                                                {tx.paymentMethod || 'Cash'}
+                                                            </span>
+                                                            <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
+                                                            {section === 'sales' && tx.orderId && (
+                                                                <span className="text-xs font-mono text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                                                                    {tx.orderId}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {section === 'sales' && tx.customerName && (
+                                                            <p className="text-xs font-semibold text-amber-700 mb-0.5 flex items-center gap-1">
+                                                                <User className="w-3 h-3" />{tx.customerName}
+                                                                {tx.phone && <span className="text-gray-400 font-normal ml-1">· {tx.phone}</span>}
+                                                            </p>
+                                                        )}
+                                                        <p className="text-sm font-semibold text-gray-800 truncate">{tx.description}</p>
+                                                        <p className="text-base font-extrabold text-gray-900 mt-0.5">{fmt(tx.amount)}</p>
+                                                        {section === 'sales' && tx.addedBy && (
+                                                            <p className="text-xs text-gray-400 mt-0.5">Added by {tx.addedBy}</p>
+                                                        )}
+                                                    </div>
+                                                    {/* WhatsApp button — sales only, needs phone */}
+                                                    {section === 'sales' && tx.phone && (
+                                                        <button
+                                                            onClick={() => sendWhatsApp(tx)}
+                                                            aria-label="Send WhatsApp"
+                                                            className="mt-1 p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all focus:outline-none flex-shrink-0"
+                                                        >
+                                                            <MessageCircle className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleEdit(tx)}
+                                                        aria-label="Edit entry"
+                                                        className="mt-1 p-2 rounded-lg text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all focus:outline-none flex-shrink-0"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(tx)}
+                                                        disabled={deletingId === tx.id}
+                                                        aria-label="Delete entry"
+                                                        className="mt-1 p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all
+                                       focus:outline-none flex-shrink-0 disabled:opacity-40"
+                                                    >
+                                                        {deletingId === tx.id
+                                                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                                                            : <Trash2 className="w-4 h-4" />}
+                                                    </button>
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
+                                        <div className="px-4 py-3 bg-gray-50 flex justify-between items-center">
+                                            <span className="text-sm font-semibold text-gray-500">Grand Total</span>
+                                            <span className="text-base font-black text-gray-900">{fmt(total)}</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )
                         )}
                     </div>
                 </div>
@@ -1061,22 +1217,40 @@ export default function SectionDetail() {
                                         {editErrors.description && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.description}</p>}
                                     </div>
 
-                                    {/* Payment Method */}
-                                    <div className="sm:col-span-2">
-                                        <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                                            <CreditCard className="w-3.5 h-3.5" /> Payment Method
-                                        </label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {PAYMENT_METHODS.map(pm => (
-                                                <button key={pm} type="button"
-                                                    onClick={() => setEditForm(p => ({ ...p, paymentMethod: pm }))}
-                                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all focus:outline-none focus:ring-2 ${meta.ring}
-                                                    ${editForm.paymentMethod === pm ? `${meta.btn} text-white border-transparent shadow` : 'border-gray-200 text-gray-500 bg-white hover:border-gray-300'}`}>
-                                                    {pm}
-                                                </button>
-                                            ))}
+                                    {/* Payment Method / Category Toggle */}
+                                    {section === 'cash_in_hand' ? (
+                                        <div className="sm:col-span-2">
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                                💵 Balance Type
+                                            </label>
+                                            <div className="flex gap-2">
+                                                {['Cash', 'Bank'].map(type => (
+                                                    <button key={type} type="button"
+                                                        onClick={() => setEditForm(p => ({ ...p, balanceType: type }))}
+                                                        className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all focus:outline-none focus:ring-2 ${meta.ring}
+                                                        ${editForm.balanceType === type ? `${meta.btn} text-white border-transparent shadow` : 'border-gray-200 text-gray-500 bg-white hover:border-gray-300'}`}>
+                                                        {type === 'Cash' ? '💵 Cash' : '🏦 Bank'}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="sm:col-span-2">
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                                <CreditCard className="w-3.5 h-3.5" /> Payment Method
+                                            </label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {PAYMENT_METHODS.map(pm => (
+                                                    <button key={pm} type="button"
+                                                        onClick={() => setEditForm(p => ({ ...p, paymentMethod: pm }))}
+                                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all focus:outline-none focus:ring-2 ${meta.ring}
+                                                        ${editForm.paymentMethod === pm ? `${meta.btn} text-white border-transparent shadow` : 'border-gray-200 text-gray-500 bg-white hover:border-gray-300'}`}>
+                                                        {pm}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Added By — ALL sections */}
                                     <div>
