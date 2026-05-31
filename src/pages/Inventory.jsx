@@ -47,6 +47,7 @@ export default function Inventory() {
     const [loading, setLoading] = useState(true);
 
     const [view, setView] = useState('active');
+    const [shopFilter, setShopFilter] = useState('all');
 
     const [showForm, setShowForm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -55,6 +56,7 @@ export default function Inventory() {
         quantity: 1,
         dateOfEntry: new Date().toISOString().slice(0, 10),
         sourceName: 'Bolpur',
+        shopName: 'GT',
         status: 'Active'
     });
 
@@ -102,6 +104,7 @@ export default function Inventory() {
                 quantity: 1,
                 dateOfEntry: new Date().toISOString().slice(0, 10),
                 sourceName: 'Bolpur',
+                shopName: 'GT',
                 status: 'Active'
             });
             setModelSearch('');
@@ -146,6 +149,7 @@ export default function Inventory() {
             await addDoc(collection(db, 'bt_inventory'), {
                 modelName: item.modelName,
                 sourceName: item.sourceName,
+                shopName: item.shopName || 'GT',
                 dateOfEntry: item.dateOfEntry,
                 addedBy: item.addedBy || user.uid,
                 status: 'Disbursed',
@@ -178,13 +182,16 @@ export default function Inventory() {
         }
     };
 
-    const filteredInventory = inventory.filter(item =>
-        view === 'active' ? item.status === 'Active' : item.status === 'Disbursed'
-    );
+    const filteredInventory = inventory.filter(item => {
+        const matchesStatus = view === 'active' ? item.status === 'Active' : item.status === 'Disbursed';
+        const matchesShop = shopFilter === 'all' || item.shopName === shopFilter || (shopFilter === 'GT' && !item.shopName);
+        return matchesStatus && matchesShop;
+    });
 
-    const countTotal = filteredInventory
-        .filter(i => i.status === 'Active')
-        .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+    const totalActiveQty = inventory.filter(i => i.status === 'Active').reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+    const gtActiveQty = inventory.filter(i => i.status === 'Active' && (!i.shopName || i.shopName === 'GT')).reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+    const btActiveQty = inventory.filter(i => i.status === 'Active' && i.shopName === 'BT').reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+    const etActiveQty = inventory.filter(i => i.status === 'Active' && i.shopName === 'ET').reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
 
     const isDisburseOver = disburseModal.item && disburseModal.qty > disburseModal.item.quantity;
     const isDisburseZero = disburseModal.qty <= 0;
@@ -307,10 +314,19 @@ export default function Inventory() {
                                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-400 mb-1">Source / Shop</label>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1">Source / Vendor</label>
                                     <select required value={formData.sourceName} onChange={e => setFormData({ ...formData, sourceName: e.target.value })}
                                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
                                         {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1">Shop Name <span className="text-red-400">*</span></label>
+                                    <select required value={formData.shopName || 'GT'} onChange={e => setFormData({ ...formData, shopName: e.target.value })}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                        <option value="GT">GT</option>
+                                        <option value="BT">BT</option>
+                                        <option value="ET">ET</option>
                                     </select>
                                 </div>
                                 <div>
@@ -393,20 +409,41 @@ export default function Inventory() {
                     )}
                 </AnimatePresence>
 
-                <div className="flex bg-slate-800/50 p-1 rounded-xl">
-                    <button onClick={() => setView('active')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${view === 'active' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>
-                        Active Stock
-                    </button>
-                    <button onClick={() => setView('disbursed')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${view === 'disbursed' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>
-                        Disbursed Logs
-                    </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1 flex bg-slate-800/50 p-1 rounded-xl">
+                        <button type="button" onClick={() => setView('active')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${view === 'active' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>
+                            Active Stock
+                        </button>
+                        <button type="button" onClick={() => setView('disbursed')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${view === 'disbursed' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>
+                            Disbursed Logs
+                        </button>
+                    </div>
+                    <select value={shopFilter} onChange={e => setShopFilter(e.target.value)}
+                        className="py-2 px-3 text-sm rounded-xl border border-slate-700 bg-slate-800 text-slate-300 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all w-full sm:w-44">
+                        <option value="all">All Shops</option>
+                        <option value="GT">GT</option>
+                        <option value="BT">BT</option>
+                        <option value="ET">ET</option>
+                    </select>
                 </div>
 
                 {view === 'active' && (
-                    <div className="flex items-center gap-6 px-4 py-1">
-                        <div className="flex items-center gap-2 text-sm">
-                            <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-                            <span className="text-slate-400">Total Active Stock: <strong className="text-slate-200">{countTotal}</strong></span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-sm shadow-sm">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">📦 Total Active</span>
+                            <span className="text-xl font-extrabold text-white mt-1">{totalActiveQty}</span>
+                        </div>
+                        <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-sm shadow-sm">
+                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">🧸 GT Active</span>
+                            <span className="text-xl font-extrabold text-white mt-1">{gtActiveQty}</span>
+                        </div>
+                        <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-sm shadow-sm">
+                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">🎮 BT Active</span>
+                            <span className="text-xl font-extrabold text-white mt-1">{btActiveQty}</span>
+                        </div>
+                        <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-sm shadow-sm">
+                            <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider">🕹️ ET Active</span>
+                            <span className="text-xl font-extrabold text-white mt-1">{etActiveQty}</span>
                         </div>
                     </div>
                 )}
@@ -449,8 +486,17 @@ export default function Inventory() {
                                                 <span className="text-cyan-400 text-sm ml-2 font-bold bg-cyan-900/40 px-2 py-0.5 rounded-md">Sent: {item.quantity}</span>
                                             )}
 
-                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.sourceName === 'Bolpur' ? 'bg-purple-900/50 text-purple-300 border border-purple-700' : 'bg-pink-900/50 text-pink-300 border border-pink-700'} ml-auto sm:ml-2`}>
+                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.sourceName === 'Bolpur' ? 'bg-purple-900/50 text-purple-300 border border-purple-700' : 'bg-pink-900/50 text-pink-300 border border-pink-700'} ml-2`}>
                                                 {item.sourceName}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                                item.shopName === 'BT' 
+                                                    ? 'bg-blue-950/50 text-blue-300 border border-blue-800' 
+                                                    : item.shopName === 'ET' 
+                                                        ? 'bg-pink-950/50 text-pink-300 border border-pink-800' 
+                                                        : 'bg-amber-950/50 text-amber-300 border border-amber-800'
+                                            } ml-auto sm:ml-2`}>
+                                                {item.shopName || 'GT'}
                                             </span>
                                         </div>
                                         <div className="text-slate-400 text-sm flex flex-wrap gap-x-4 gap-y-1">

@@ -126,6 +126,18 @@ export default function Dashboard() {
         .filter(t => t.shopName === 'ET')
         .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
+    // Calculate segregated expense balances for GT, BT, and ET shops
+    const expenseTxs = filtered.filter(t => t.section === 'expense');
+    const gtExpenseSubtotal = expenseTxs
+        .filter(t => !t.shopName || t.shopName === 'GT')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const btExpenseSubtotal = expenseTxs
+        .filter(t => t.shopName === 'BT')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const etExpenseSubtotal = expenseTxs
+        .filter(t => t.shopName === 'ET')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
     const totals = Object.fromEntries(
         SECTIONS.map(s => {
             if (s.id === 'cash_in_hand') return [s.id, cashSubtotal + bankSubtotal];
@@ -141,6 +153,9 @@ export default function Dashboard() {
 
     const invActive = inventory.filter(i => i.status === 'Active').reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
     const invDisbursed = inventory.filter(i => i.status === 'Disbursed').reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const gtActiveInv = inventory.filter(i => i.status === 'Active' && (!i.shopName || i.shopName === 'GT')).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const btActiveInv = inventory.filter(i => i.status === 'Active' && i.shopName === 'BT').reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const etActiveInv = inventory.filter(i => i.status === 'Active' && i.shopName === 'ET').reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
 
     /* Recent activity — last 6 transactions across all sections */
     const recent = [...allTx]
@@ -268,7 +283,19 @@ export default function Dashboard() {
                                 <div>
                                     {loading
                                         ? <div className="h-7 w-20 bg-white/20 rounded-lg animate-pulse" />
-                                        : sec.id === 'sales' ? (
+                                        : sec.id === 'expense' ? (
+                                            <>
+                                                <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">{fmt(totals[sec.id])}</p>
+                                                <div className="flex gap-x-2 gap-y-0.5 flex-wrap mt-1.5 text-[10px] text-white/80 font-bold">
+                                                    <span className="flex items-center gap-0.5">🧸 GT: {fmt(gtExpenseSubtotal)}</span>
+                                                    <span className="flex items-center gap-0.5">🎮 BT: {fmt(btExpenseSubtotal)}</span>
+                                                    <span className="flex items-center gap-0.5">🕹️ ET: {fmt(etExpenseSubtotal)}</span>
+                                                </div>
+                                                <p className="text-white/40 text-[9px] mt-1 font-medium leading-none">
+                                                    {counts[sec.id]} manual {counts[sec.id] === 1 ? 'entry' : 'entries'}
+                                                </p>
+                                            </>
+                                        ) : sec.id === 'sales' ? (
                                             <>
                                                 <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">{fmt(totals[sec.id])}</p>
                                                 <div className="flex gap-x-2 gap-y-0.5 flex-wrap mt-1.5 text-[10px] text-white/80 font-bold">
@@ -326,7 +353,12 @@ export default function Dashboard() {
                                     ? <div className="h-7 w-20 bg-white/20 rounded-lg animate-pulse" />
                                     : <>
                                         <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">{invActive}</p>
-                                        <p className="text-white/50 text-xs mt-0.5">
+                                        <div className="flex gap-x-2 gap-y-0.5 flex-wrap mt-1.5 text-[10px] text-white/80 font-bold">
+                                            <span className="flex items-center gap-0.5">🧸 GT: {gtActiveInv}</span>
+                                            <span className="flex items-center gap-0.5">🎮 BT: {btActiveInv}</span>
+                                            <span className="flex items-center gap-0.5">🕹️ ET: {etActiveInv}</span>
+                                        </div>
+                                        <p className="text-white/40 text-[9px] mt-1 font-medium leading-none">
                                             Active · {invDisbursed} Disbursed
                                         </p>
                                     </>

@@ -135,6 +135,7 @@ export default function SectionDetail() {
     const [sortAsc, setSortAsc] = useState(false);
     const [search, setSearch] = useState('');
     const [monthFilter, setMonthFilter] = useState('all');
+    const [shopFilter, setShopFilter] = useState('all');
 
     /* Edit state */
     const [editTarget, setEditTarget] = useState(null);
@@ -179,6 +180,9 @@ export default function SectionDetail() {
             if (!form.shopName) e.shopName = 'Shop Name is required';
             if (form.phone && !/^[0-9]{10}$/.test(form.phone.trim()))
                 e.phone = 'Enter a valid 10-digit mobile number';
+        }
+        if (section === 'expense') {
+            if (!form.shopName) e.shopName = 'Shop Name is required';
         }
         setFormErrors(e);
         return !Object.keys(e).length;
@@ -253,6 +257,9 @@ export default function SectionDetail() {
             addedBy: form.addedBy,          /* all sections */
             ...(section === 'cash_in_hand' && {
                 balanceType: form.balanceType || 'Cash',
+            }),
+            ...(section === 'expense' && {
+                shopName: form.shopName || 'GT',
             }),
             ...(section === 'sales' && {
                 orderId,
@@ -355,6 +362,9 @@ export default function SectionDetail() {
             if (editForm.phone && !/^[0-9]{10}$/.test(editForm.phone.trim()))
                 e.phone = 'Enter a valid 10-digit mobile number';
         }
+        if (section === 'expense') {
+            if (!editForm.shopName) e.shopName = 'Shop Name is required';
+        }
         setEditErrors(e);
         return !Object.keys(e).length;
     };
@@ -371,6 +381,9 @@ export default function SectionDetail() {
             addedBy: editForm.addedBy,           /* all sections */
             ...(section === 'cash_in_hand' && {
                 balanceType: editForm.balanceType || 'Cash',
+            }),
+            ...(section === 'expense' && {
+                shopName: editForm.shopName || 'GT',
             }),
             ...(section === 'sales' && {
                 shopName: editForm.shopName || 'GT',
@@ -464,7 +477,8 @@ export default function SectionDetail() {
             const matchMonth = monthFilter === 'all' || (t.date || '').startsWith(monthFilter);
             const matchSearch = !search.trim() ||
                 t.description?.toLowerCase().includes(search.trim().toLowerCase());
-            return matchMonth && matchSearch;
+            const matchShop = (section !== 'sales' && section !== 'expense') || shopFilter === 'all' || t.shopName === shopFilter || (shopFilter === 'GT' && !t.shopName);
+            return matchMonth && matchSearch && matchShop;
         })
         .sort((a, b) => {
             const diff = new Date(a.date) - new Date(b.date);
@@ -479,6 +493,11 @@ export default function SectionDetail() {
 
     const cashSubtotal = cashEntries.reduce((s, t) => s + (Number(t.amount) || 0), 0);
     const bankSubtotal = bankEntries.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+    // Shop-wise subtotals
+    const gtShopSubtotal = sorted.filter(t => !t.shopName || t.shopName === 'GT').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const btShopSubtotal = sorted.filter(t => t.shopName === 'BT').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const etShopSubtotal = sorted.filter(t => t.shopName === 'ET').reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
     if (!meta) return null;
 
@@ -673,22 +692,6 @@ export default function SectionDetail() {
                                                 </div>
                                             </div>
 
-                                            {/* Shop Name Dropdown */}
-                                            <div>
-                                                <label htmlFor="field-shopName" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                                    🏬 Shop Name <span className="text-red-400">*</span>
-                                                </label>
-                                                <select id="field-shopName"
-                                                    value={form.shopName || 'GT'}
-                                                    onChange={e => { setForm(p => ({ ...p, shopName: e.target.value })); setFormErrors(p => ({ ...p, shopName: '' })); }}
-                                                    className={inputCls('shopName')}>
-                                                    <option value="GT">GT</option>
-                                                    <option value="BT">BT</option>
-                                                    <option value="ET">ET</option>
-                                                </select>
-                                                {formErrors.shopName && <p role="alert" className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{formErrors.shopName}</p>}
-                                            </div>
-
                                             {/* Customer Name */}
                                             <div>
                                                 <label htmlFor="field-customer" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -765,6 +768,24 @@ export default function SectionDetail() {
                                                     className={`${inputCls('address')} resize-none`} />
                                             </div>
                                         </>)}
+
+                                        {/* Shop Name Dropdown — Sales or Expense */}
+                                        {(section === 'sales' || section === 'expense') && (
+                                            <div>
+                                                <label htmlFor="field-shopName" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                    🏬 Shop Name <span className="text-red-400">*</span>
+                                                </label>
+                                                <select id="field-shopName"
+                                                    value={form.shopName || 'GT'}
+                                                    onChange={e => { setForm(p => ({ ...p, shopName: e.target.value })); setFormErrors(p => ({ ...p, shopName: '' })); }}
+                                                    className={inputCls('shopName')}>
+                                                    <option value="GT">GT</option>
+                                                    <option value="BT">BT</option>
+                                                    <option value="ET">ET</option>
+                                                </select>
+                                                {formErrors.shopName && <p role="alert" className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{formErrors.shopName}</p>}
+                                            </div>
+                                        )}
 
                                         {/* Added By — visible for ALL sections */}
                                         <div>
@@ -846,8 +867,17 @@ export default function SectionDetail() {
                                         return <option key={m} value={m}>{label}</option>;
                                     })}
                                 </select>
+                                {(section === 'sales' || section === 'expense') && (
+                                    <select id="shop-filter" value={shopFilter} onChange={e => setShopFilter(e.target.value)}
+                                        className="py-2 px-3 text-sm rounded-xl border border-gray-200 bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all w-full sm:w-36">
+                                        <option value="all">All shops</option>
+                                        <option value="GT">GT</option>
+                                        <option value="BT">BT</option>
+                                        <option value="ET">ET</option>
+                                    </select>
+                                )}
                             </div>
-                            {(search || monthFilter !== 'all') && (
+                            {(search || monthFilter !== 'all' || shopFilter !== 'all') && (
                                 <p className="text-xs text-gray-400">
                                     {sorted.length} result{sorted.length !== 1 ? 's' : ''} &middot; Total: <span className="font-bold text-gray-700">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(filteredTotal)}</span>
                                 </p>
@@ -1007,13 +1037,33 @@ export default function SectionDetail() {
                                 </div>
                             ) : (
                                 <>
+                                    {/* Shop-wise subtotals header */}
+                                    {(section === 'expense' || section === 'sales') && sorted.length > 0 && (
+                                        <div className="mb-6 grid grid-cols-3 gap-3">
+                                            <div className="bg-amber-50/70 border border-amber-100/60 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                                                <span className="text-[10px] font-bold text-amber-800 tracking-wide uppercase">🧸 GT {section === 'sales' ? 'Sales' : 'Expenses'}</span>
+                                                <span className="text-base sm:text-lg font-black text-amber-900 mt-1">{fmt(gtShopSubtotal)}</span>
+                                            </div>
+                                            <div className="bg-blue-50/70 border border-blue-100/60 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                                                <span className="text-[10px] font-bold text-blue-800 tracking-wide uppercase">🎮 BT {section === 'sales' ? 'Sales' : 'Expenses'}</span>
+                                                <span className="text-base sm:text-lg font-black text-blue-900 mt-1">{fmt(btShopSubtotal)}</span>
+                                            </div>
+                                            <div className="bg-pink-50/70 border border-pink-100/60 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                                                <span className="text-[10px] font-bold text-pink-800 tracking-wide uppercase">🕹️ ET {section === 'sales' ? 'Sales' : 'Expenses'}</span>
+                                                <span className="text-base sm:text-lg font-black text-pink-900 mt-1">{fmt(etShopSubtotal)}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="hidden sm:block overflow-x-auto">
                                         <table className="w-full text-sm">
                                             <thead>
                                                 <tr className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wider">
                                                     <th className="px-5 py-3 text-left font-semibold">Date</th>
-                                                    {section === 'sales' && <>
+                                                    {(section === 'sales' || section === 'expense') && (
                                                         <th className="px-5 py-3 text-left font-semibold">Shop</th>
+                                                    )}
+                                                    {section === 'sales' && <>
                                                         <th className="px-5 py-3 text-left font-semibold">Order ID</th>
                                                         <th className="px-5 py-3 text-left font-semibold">Customer</th>
                                                         <th className="px-5 py-3 text-left font-semibold">Added By</th>
@@ -1035,12 +1085,20 @@ export default function SectionDetail() {
                                                             className="hover:bg-gray-50 transition-colors group"
                                                         >
                                                             <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap text-xs">{fmtDate(tx.date)}</td>
-                                                            {section === 'sales' && <>
+                                                            {(section === 'sales' || section === 'expense') && (
                                                                 <td className="px-5 py-3.5 whitespace-nowrap">
-                                                                    <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                                                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                                                        tx.shopName === 'BT'
+                                                                            ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                                                                            : tx.shopName === 'ET'
+                                                                                ? 'bg-pink-50 text-pink-800 border border-pink-200'
+                                                                                : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                                                    }`}>
                                                                         {tx.shopName || 'GT'}
                                                                     </span>
                                                                 </td>
+                                                            )}
+                                                            {section === 'sales' && <>
                                                                 <td className="px-5 py-3.5 font-mono text-xs text-amber-600 whitespace-nowrap">
                                                                     {tx.orderId || <span className="text-gray-300">—</span>}
                                                                 </td>
@@ -1121,12 +1179,18 @@ export default function SectionDetail() {
                                                                 {tx.paymentMethod || 'Cash'}
                                                             </span>
                                                             <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
-                                                            {section === 'sales' && (
+                                                            {(section === 'sales' || section === 'expense') && (
                                                                 <div className="flex gap-1 items-center">
-                                                                    <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                                                    <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full border ${
+                                                                        tx.shopName === 'BT'
+                                                                            ? 'text-blue-800 bg-blue-50 border-blue-200'
+                                                                            : tx.shopName === 'ET'
+                                                                                ? 'text-pink-800 bg-pink-50 border-pink-200'
+                                                                                : 'text-amber-800 bg-amber-50 border-amber-200'
+                                                                    }`}>
                                                                         {tx.shopName || 'GT'}
                                                                     </span>
-                                                                    {tx.orderId && (
+                                                                    {section === 'sales' && tx.orderId && (
                                                                         <span className="text-xs font-mono text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
                                                                             {tx.orderId}
                                                                         </span>
@@ -1287,6 +1351,23 @@ export default function SectionDetail() {
                                         </div>
                                     )}
 
+                                    {/* Shop Name Dropdown — Sales or Expense */}
+                                    {(section === 'sales' || section === 'expense') && (
+                                        <div>
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                🏬 Shop Name <span className="text-red-400">*</span>
+                                            </label>
+                                            <select value={editForm.shopName || 'GT'}
+                                                onChange={e => { setEditForm(p => ({ ...p, shopName: e.target.value })); setEditErrors(p => ({ ...p, shopName: '' })); }}
+                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`}>
+                                                <option value="GT">GT</option>
+                                                <option value="BT">BT</option>
+                                                <option value="ET">ET</option>
+                                            </select>
+                                            {editErrors.shopName && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.shopName}</p>}
+                                        </div>
+                                    )}
+
                                     {/* Added By — ALL sections */}
                                     <div>
                                         <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -1301,19 +1382,6 @@ export default function SectionDetail() {
 
                                     {/* ── Sales-only fields ── */}
                                     {section === 'sales' && (<>
-                                        <div>
-                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                                🏬 Shop Name <span className="text-red-400">*</span>
-                                            </label>
-                                            <select value={editForm.shopName || 'GT'}
-                                                onChange={e => { setEditForm(p => ({ ...p, shopName: e.target.value })); setEditErrors(p => ({ ...p, shopName: '' })); }}
-                                                className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-slate-50 text-gray-900 border-gray-200 focus:outline-none focus:ring-2 ${meta.ring} transition-all`}>
-                                                <option value="GT">GT</option>
-                                                <option value="BT">BT</option>
-                                                <option value="ET">ET</option>
-                                            </select>
-                                            {editErrors.shopName && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{editErrors.shopName}</p>}
-                                        </div>
                                         <div>
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                                 <User className="w-3.5 h-3.5" /> Customer Name <span className="text-red-400">*</span>
