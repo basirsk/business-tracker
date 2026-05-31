@@ -673,6 +673,22 @@ export default function SectionDetail() {
                                                 </div>
                                             </div>
 
+                                            {/* Shop Name Dropdown */}
+                                            <div>
+                                                <label htmlFor="field-shopName" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                    🏬 Shop Name <span className="text-red-400">*</span>
+                                                </label>
+                                                <select id="field-shopName"
+                                                    value={form.shopName || 'GT'}
+                                                    onChange={e => { setForm(p => ({ ...p, shopName: e.target.value })); setFormErrors(p => ({ ...p, shopName: '' })); }}
+                                                    className={inputCls('shopName')}>
+                                                    <option value="GT">GT</option>
+                                                    <option value="BT">BT</option>
+                                                    <option value="ET">ET</option>
+                                                </select>
+                                                {formErrors.shopName && <p role="alert" className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{formErrors.shopName}</p>}
+                                            </div>
+
                                             {/* Customer Name */}
                                             <div>
                                                 <label htmlFor="field-customer" className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
