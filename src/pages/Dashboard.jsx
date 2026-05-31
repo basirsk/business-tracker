@@ -114,6 +114,18 @@ export default function Dashboard() {
         .filter(t => t.balanceType === 'Bank')
         .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
+    // Calculate segregated sales balances for GT, BT, and ET shops
+    const salesTxs = filtered.filter(t => t.section === 'sales');
+    const gtSalesSubtotal = salesTxs
+        .filter(t => !t.shopName || t.shopName === 'GT')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const btSalesSubtotal = salesTxs
+        .filter(t => t.shopName === 'BT')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const etSalesSubtotal = salesTxs
+        .filter(t => t.shopName === 'ET')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
     const totals = Object.fromEntries(
         SECTIONS.map(s => {
             if (s.id === 'cash_in_hand') return [s.id, cashSubtotal + bankSubtotal];
@@ -256,7 +268,19 @@ export default function Dashboard() {
                                 <div>
                                     {loading
                                         ? <div className="h-7 w-20 bg-white/20 rounded-lg animate-pulse" />
-                                        : sec.id === 'cash_in_hand' ? (
+                                        : sec.id === 'sales' ? (
+                                            <>
+                                                <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">{fmt(totals[sec.id])}</p>
+                                                <div className="flex gap-x-2 gap-y-0.5 flex-wrap mt-1.5 text-[10px] text-white/80 font-bold">
+                                                    <span className="flex items-center gap-0.5">🧸 GT: {fmt(gtSalesSubtotal)}</span>
+                                                    <span className="flex items-center gap-0.5">🎮 BT: {fmt(btSalesSubtotal)}</span>
+                                                    <span className="flex items-center gap-0.5">🕹️ ET: {fmt(etSalesSubtotal)}</span>
+                                                </div>
+                                                <p className="text-white/40 text-[9px] mt-1 font-medium leading-none">
+                                                    {counts[sec.id]} manual {counts[sec.id] === 1 ? 'entry' : 'entries'}
+                                                </p>
+                                            </>
+                                        ) : sec.id === 'cash_in_hand' ? (
                                             <>
                                                 <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">{fmt(totals[sec.id])}</p>
                                                 <div className="flex gap-x-2.5 gap-y-0.5 flex-wrap mt-1.5 text-[10px] text-white/80 font-bold">
